@@ -1,0 +1,271 @@
+# Gold Digger AI Bot - .gitignore
+# Comprehensive exclusions for Python trading bot
+
+# === SECURITY & CREDENTIALS ===
+.env
+.env.local
+.env.production
+.env.staging
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+config.ini
+secrets.yaml
+
+# API Keys and Trading Credentials
+*api_key*
+*secret*
+*password*
+*token*
+mt5_credentials.json
+gemini_api_key.txt
+
+# === PYTHON ===
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.conda/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# === TRADING & FINANCIAL DATA ===
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+gold_digger.db*
+trading_data.db*
+backtest_results.db*
+
+# Trading logs
+logs/
+*.log
+trading_*.log
+mt5_*.log
+gemini_*.log
+daemon_*.log
+
+# Backtest results
+backtest_results/
+optimization_results/
+performance_reports/
+*.csv
+*.xlsx
+historical_data/
+market_data/
+
+# Trading state files
+daemon_status.txt
+trading_state.json
+position_*.json
+orders_*.json
+
+# MT5 specific files
+*.ex4
+*.ex5
+*.mq4
+*.mq5
+terminal.exe
+terminal64.exe
+
+# === DEVELOPMENT ===
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# === STREAMLIT ===
+.streamlit/
+streamlit_cache/
+
+# === DOCUMENTATION ===
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# === DEPLOYMENT ===
+# Docker
+.dockerignore
+Dockerfile.local
+docker-compose.override.yml
+
+# Kubernetes
+*.yaml.local
+*.yml.local
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# === MONITORING & ANALYTICS ===
+# Performance monitoring
+performance_data/
+monitoring_logs/
+analytics_data/
+
+# Error tracking
+error_reports/
+crash_dumps/
+debug_*.txt
+
+# === CUSTOM PROJECT FILES ===
+# Test files (keep structure, ignore data)
+test_data/
+test_results/
+test_*.db
+
+# Configuration backups
+config_backup/
+settings_backup/
+
+# Development notes
+dev_notes.md
+todo.md
+scratch.py
+test_*.py
+
+# Local development
+local_config.py
+dev_settings.py
+debug_mode.py
+
+# === WINDOWS SPECIFIC ===
+# Windows MT5 server logs
+windows_mt5_server/*.log
+windows_mt5_server/debug.txt
+
+# Windows executables
+*.exe
+*.msi
+*.dll
+
+# === MACOS SPECIFIC ===
+# macOS bridge files
+mt5_bridge_cache/
+macos_mt5_data/
+
+# === BACKUP FILES ===
+# Automated backups
+backup_*/
+*.backup
+*_backup.*
+restore_point_*/
+
+# === LARGE FILES ===
+# Large datasets
+*.parquet
+*.h5
+*.hdf5
+large_datasets/
+
+# Model files
+*.pkl
+*.pickle
+*.joblib
+models/
+trained_models/
+
+# === IGNORE PATTERNS ===
+# Any file with 'secret' in name
+*secret*
+*private*
+*confidential*
+
+# Any .local files
+*.local
+
+# Any development databases
+*_dev.db
+*_test.db
+*_local.db
