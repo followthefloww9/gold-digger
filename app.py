@@ -677,15 +677,34 @@ def main():
             chart_data = get_real_market_data(timeframe, candle_count)
 
             if chart_data is not None and not chart_data.empty:
+                # Display data source information
+                if hasattr(st.session_state, 'data_source_info'):
+                    source_info = st.session_state.data_source_info
+                    col_info1, col_info2, col_info3 = st.columns(3)
+
+                    with col_info1:
+                        st.info(f"📊 **Source**: {source_info.get('source', 'Unknown')}")
+                    with col_info2:
+                        st.info(f"⏰ **Timeframe**: {source_info.get('timeframe', timeframe)}")
+                    with col_info3:
+                        if 'latest_price' in source_info:
+                            st.success(f"💰 **Latest**: {source_info['latest_price']}")
+                        else:
+                            latest_price = chart_data['close'].iloc[-1] if 'close' in chart_data.columns else chart_data['Close'].iloc[-1]
+                            st.success(f"💰 **Latest**: ${latest_price:.2f}")
+
                 # Create candlestick chart with SMC indicators
                 fig = create_candlestick_chart(chart_data, timeframe)
                 st.plotly_chart(fig, use_container_width=True)
+
+                # Show data quality info
+                st.caption(f"📈 Displaying {len(chart_data)} candles of real market data")
             else:
                 st.error("❌ Unable to load market data")
-                st.info("💡 Check internet connection or MT5 setup")
+                st.info("💡 Check internet connection or try a different timeframe")
         except Exception as e:
             st.error(f"❌ Chart Error: {str(e)}")
-            st.info("💡 Displaying fallback chart...")
+            st.info("💡 Try refreshing the page or check data sources")
 
             # Fallback chart
             import numpy as np
@@ -1313,24 +1332,66 @@ def display_recent_signals():
 
     try:
         # Get real market data for analysis
-        chart_data = get_real_market_data('M5', 50)
+        chart_data = get_real_market_data('H1', 50)  # Use hourly data for better availability
 
-        # Prepare data for analysis - fix column mapping first
-        chart_data_fixed = chart_data.copy()
-        if 'Time' in chart_data_fixed.columns:
-            chart_data_fixed.rename(columns={'Time': 'datetime'}, inplace=True)
-        df_analysis = chart_data_fixed.set_index('datetime')
-        df_analysis.rename(columns={
-            'open': 'Open', 'high': 'High', 'low': 'Low',
-            'close': 'Close', 'volume': 'Volume'
-        }, inplace=True)
+        if chart_data is None or len(chart_data) == 0:
+            st.warning("⚠️ No market data available for signal generation")
+            st.info("📊 Trying alternative data source...")
 
-        # Generate AI trading signal
-        from core.trading_engine import TradingEngine
-        engine = TradingEngine()
+            # Fallback to historical data
+            from core.historical_data import HistoricalDataFetcher
+            from datetime import datetime, timedelta
 
-        account_info = {'balance': 100000, 'equity': 100000}
-        signal = engine.generate_trade_signal(df_analysis, account_info)
+            data_fetcher = HistoricalDataFetcher()
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=30)
+
+            fallback_data = data_fetcher.get_gold_historical_data(start_date, end_date, '1h')
+
+            if fallback_data is not None and len(fallback_data) > 0:
+                # Convert to chart format
+                chart_data = fallback_data.reset_index()
+                chart_data.columns = [col.lower() for col in chart_data.columns]
+                chart_data['datetime'] = chart_data.index
+                chart_data = chart_data.tail(50)
+                st.success("✅ Using real historical market data")
+            else:
+                st.error("❌ No real market data available")
+                return
+
+        # Prepare data for analysis with robust error handling
+        try:
+            # Ensure we have the right column names
+            if 'datetime' not in chart_data.columns:
+                if 'Time' in chart_data.columns:
+                    chart_data['datetime'] = chart_data['Time']
+                else:
+                    chart_data['datetime'] = chart_data.index
+
+            # Prepare data for trading engine (expects dict format)
+            signal_data = {
+                'Close': chart_data['close'].tolist() if 'close' in chart_data.columns else chart_data['Close'].tolist(),
+                'High': chart_data['high'].tolist() if 'high' in chart_data.columns else chart_data['High'].tolist(),
+                'Low': chart_data['low'].tolist() if 'low' in chart_data.columns else chart_data['Low'].tolist(),
+                'Open': chart_data['open'].tolist() if 'open' in chart_data.columns else chart_data['Open'].tolist()
+            }
+
+            # Generate AI trading signal
+            from core.trading_engine import TradingEngine
+            engine = TradingEngine(use_mql5_bridge=True)
+
+            account_info = {'balance': 100000, 'equity': 100000}
+            signal = engine.generate_trade_signal(signal_data, account_info)
+
+        except Exception as e:
+            st.error(f"❌ Signal generation error: {e}")
+            # Create fallback signal
+            signal = {
+                'signal': 'HOLD',
+                'confidence': 0.0,
+                'analysis': {'error': f'Signal generation failed: {e}'},
+                'setup_quality': 0
+            }
 
         # Create signals dataframe with ONLY real data
         current_time = datetime.now().strftime('%H:%M')
