@@ -1442,7 +1442,14 @@ def display_backtesting_section():
                 )
 
                 if data is not None and len(data) >= 10:
-                    st.info(f"✅ Retrieved {len(data)} candles from {data.iloc[0].get('Source', 'Historical Data')}")
+                    st.info(f"✅ Retrieved {len(data)} candles from {data.iloc[0].get('Source', 'Real Market Data')}")
+
+                    # Verify this is real market data
+                    source = data.iloc[0].get('Source', '')
+                    if 'Yahoo Finance' in source:
+                        st.success("📊 Using real Yahoo Finance market data")
+                    else:
+                        st.warning("⚠️ Data source verification needed")
 
                     # Run professional backtest
                     engine = BacktestingEngine()
@@ -1457,19 +1464,20 @@ def display_backtesting_section():
                     # Convert to expected format
                     if 'error' not in results:
                         results['success'] = True
-                        results['data_source'] = data.iloc[0].get('Source', 'Historical Data')
+                        results['data_source'] = data.iloc[0].get('Source', 'Real Market Data')
                         results['interval'] = interval
                     else:
                         results = {'success': False, 'error': results['error']}
                 else:
-                    # Fallback to simple backtester if historical data fails
-                    st.warning("⚠️ Historical data unavailable, using fallback method...")
-                    from backtest.simple_backtester import run_simple_backtest
-                    results = run_simple_backtest(
-                        start_date=start_dt,
-                        end_date=end_dt,
-                        initial_capital=100000
-                    )
+                    # No fallback - real data only
+                    st.error("❌ No real market data available for the selected period")
+                    st.error("🚫 Synthetic data disabled - only real market data allowed")
+                    st.info("💡 Try a different date range or check internet connection")
+                    results = {
+                        'success': False,
+                        'error': 'No real market data available for selected period',
+                        'data_policy': 'Real data only - no synthetic fallback'
+                    }
 
                 if not results.get('success', False):
                     error_msg = results.get('error', 'Unknown error')

@@ -56,11 +56,11 @@ class HistoricalDataFetcher:
                 logger.warning("⚠️ Gold futures data insufficient, trying Gold ETF")
                 # Method 2: Gold ETF (GLD) as backup
                 data = self._fetch_yahoo_data('GLD', start_date, end_date, interval)
-            
+
             if data is None or len(data) < 10:
-                logger.warning("⚠️ ETF data insufficient, generating synthetic data")
-                # Method 3: Generate realistic synthetic data for testing
-                data = self._generate_synthetic_gold_data(start_date, end_date, interval)
+                logger.error("❌ No real market data available for the requested period")
+                logger.error("❌ Synthetic data disabled - only real market data allowed")
+                return None
             
             if data is not None and len(data) > 0:
                 # Ensure proper format for backtesting
@@ -292,12 +292,11 @@ class HistoricalDataFetcher:
                 'symbol': 'GLD'
             }
             
-            # Test synthetic data
-            synthetic_data = self._generate_synthetic_gold_data(start_date, end_date, '1h')
-            results['synthetic'] = {
-                'available': synthetic_data is not None and len(synthetic_data) > 0,
-                'candles': len(synthetic_data) if synthetic_data is not None else 0,
-                'symbol': 'Synthetic'
+            # Real data only - no synthetic fallback
+            results['real_data_only'] = {
+                'policy': 'Only real market data allowed',
+                'synthetic_disabled': True,
+                'fallback': 'None - real data required'
             }
             
             logger.info(f"✅ Data availability test completed")
