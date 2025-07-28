@@ -372,7 +372,9 @@ class MT5Connector:
 
                     # Get data source info
                     source_info = self.macos_bridge.get_data_source_info()
-                    logger.info(f"✅ Retrieved {len(df)} candles from {source_info['source']} (Login: {source_info['login']})")
+                    # Be honest about the actual data source
+                    actual_source = source_info.get('actual_source', source_info['source'])
+                    logger.info(f"✅ Retrieved {len(df)} candles from {actual_source} (Login: {source_info['login']})")
 
                     return df
                 else:
@@ -407,7 +409,7 @@ class MT5Connector:
                 df['Symbol'] = symbol
                 df['Timeframe'] = timeframe
 
-                logger.info(f"Retrieved {len(df)} candles for {symbol} {timeframe} from MT5")
+                logger.info(f"Retrieved {len(df)} candles for {symbol} {timeframe} from Yahoo Finance (MT5 fallback)")
                 return df
 
             # Fallback to Yahoo Finance with MT5 credentials shown

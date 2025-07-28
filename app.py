@@ -833,10 +833,10 @@ def get_real_market_data(timeframe='M5', count=200):
                 print(f"🔍 DEBUG: Using macOS bridge - {source_info}")  # Debug log
             else:
                 st.session_state.data_source_info = {
-                    'source': 'MetaTrader 5',
+                    'source': 'Yahoo Finance (MT5 fallback)',
                     'login': connector.login,
                     'server': connector.server,
-                    'method': 'Direct MT5'
+                    'method': 'Yahoo Finance Fallback'
                 }
                 print(f"🔍 DEBUG: Using direct MT5 - Login: {connector.login}")  # Debug log
 
@@ -1105,10 +1105,18 @@ def display_price_ticker():
                 from core.mt5_connector import MT5Connector
                 connector = MT5Connector()
                 init_result = connector.initialize_mt5()
-                login_info = init_result.get('account_info', {}).get('login', 'N/A') if init_result.get('success') else 'N/A'
-                st.caption(f"📊 Data source: MetaTrader 5 • Login: {login_info} • XAUUSD")
+
+                # Get honest data source information
+                if hasattr(connector, 'macos_bridge'):
+                    source_info = connector.macos_bridge.get_data_source_info()
+                    actual_source = source_info.get('actual_source', source_info.get('source', 'Unknown'))
+                    login_info = source_info.get('login', 'N/A')
+                    st.caption(f"📊 Data source: {actual_source} • Login: {login_info} • XAUUSD")
+                else:
+                    login_info = init_result.get('account_info', {}).get('login', 'N/A') if init_result.get('success') else 'N/A'
+                    st.caption(f"📊 Data source: Yahoo Finance (MT5 fallback) • Login: {login_info} • XAUUSD")
             except:
-                st.caption(f"📊 Data source: MetaTrader 5 • XAUUSD")
+                st.caption(f"📊 Data source: Yahoo Finance (MT5 fallback) • XAUUSD")
 
             # Use wider columns to prevent cutting
             col1, col2, col3, col4 = st.columns([1.5, 1.5, 1, 1], gap="large")
@@ -1459,7 +1467,7 @@ def display_backtesting_section():
                     st.warning("⚠️ Strategy needs optimization for this period")
 
                 # Show data source and period
-                data_source = getattr(st.session_state, 'data_source_info', {}).get('source', 'MetaTrader 5')
+                data_source = getattr(st.session_state, 'data_source_info', {}).get('source', 'Yahoo Finance (MT5 fallback)')
                 st.caption(f"📊 Period: {results['period']} • Data points: {results['data_points']} • Source: {data_source}")
 
                 # Show equity curve if available

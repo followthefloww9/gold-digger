@@ -829,22 +829,19 @@ class MT5MacOSBridge:
     
     def get_data_source_info(self):
         """Get information about current data source"""
-        if self.mt5_running:
-            return {
-                "source": "MetaTrader 5",
-                "login": self.login,
-                "server": self.server,
-                "status": "Connected",
-                "symbol": "XAUUSD"
-            }
-        else:
-            return {
-                "source": "Yahoo Finance (MT5 Fallback)",
-                "login": self.login,
-                "server": self.server,
-                "status": "MT5 Credentials Ready",
-                "symbol": "GC=F → XAUUSD"
-            }
+        # Always be honest about the actual data source
+        # Since MT5 file parsing is failing, we're using Yahoo Finance
+        return {
+            "source": "Yahoo Finance (MT5 fallback)",
+            "actual_source": "Yahoo Finance (MT5 file parsing failed)",
+            "login": self.login,
+            "server": self.server,
+            "status": "Yahoo Finance Fallback",
+            "symbol": "GC=F → XAUUSD",
+            "mt5_attempted": True,
+            "mt5_success": False,
+            "reason": "HCC file parsing not implemented"
+        }
 
 def create_mt5_macos_connection(login=52445993, server="ICMarkets-Demo", password=None):
     """Create MT5 macOS bridge connection using your existing credentials"""
