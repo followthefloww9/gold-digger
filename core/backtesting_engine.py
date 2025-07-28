@@ -52,11 +52,24 @@ class BacktestingEngine:
         try:
             logger.info(f"🔄 Starting backtest: {len(data)} candles, ${initial_balance:,.2f} initial balance")
             
-            # Filter data by date range
-            if start_date:
-                data = data[data.index >= start_date]
-            if end_date:
-                data = data[data.index <= end_date]
+            # Filter data by date range with timezone handling
+            if start_date or end_date:
+                # Handle timezone compatibility
+                if start_date:
+                    start_ts = pd.to_datetime(start_date)
+                    if data.index.tz is not None and start_ts.tz is None:
+                        start_ts = start_ts.tz_localize(data.index.tz)
+                    elif data.index.tz is None and hasattr(start_ts, 'tz') and start_ts.tz is not None:
+                        start_ts = start_ts.tz_localize(None)
+                    data = data[data.index >= start_ts]
+
+                if end_date:
+                    end_ts = pd.to_datetime(end_date)
+                    if data.index.tz is not None and end_ts.tz is None:
+                        end_ts = end_ts.tz_localize(data.index.tz)
+                    elif data.index.tz is None and hasattr(end_ts, 'tz') and end_ts.tz is not None:
+                        end_ts = end_ts.tz_localize(None)
+                    data = data[data.index <= end_ts]
             
             if len(data) < 50:
                 return {'error': 'Insufficient data for backtesting (minimum 50 candles required)'}

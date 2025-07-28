@@ -1435,13 +1435,32 @@ def display_backtesting_section():
                         if not pd.api.types.is_datetime64_any_dtype(data.index):
                             data.index = pd.to_datetime(data.index)
 
-                        # Filter data by date range (use .loc for safety)
+                        # Handle timezone issues for date filtering
                         start_ts = pd.to_datetime(start_date)
                         end_ts = pd.to_datetime(end_date)
 
-                        # Filter data
-                        mask = (data.index >= start_ts) & (data.index <= end_ts)
-                        data = data.loc[mask]
+                        # If data index has timezone, make comparison timestamps timezone-aware
+                        if data.index.tz is not None:
+                            # Convert to same timezone as data
+                            start_ts = start_ts.tz_localize(data.index.tz)
+                            end_ts = end_ts.tz_localize(data.index.tz)
+                        elif hasattr(start_ts, 'tz') and start_ts.tz is not None:
+                            # If timestamps have timezone but data doesn't, remove timezone
+                            start_ts = start_ts.tz_localize(None)
+                            end_ts = end_ts.tz_localize(None)
+
+                        # Filter data safely
+                        try:
+                            mask = (data.index >= start_ts) & (data.index <= end_ts)
+                            data = data.loc[mask]
+                        except Exception as e:
+                            # Fallback: convert everything to timezone-naive
+                            if data.index.tz is not None:
+                                data.index = data.index.tz_convert('UTC').tz_localize(None)
+                            start_ts = pd.to_datetime(start_date).tz_localize(None)
+                            end_ts = pd.to_datetime(end_date).tz_localize(None)
+                            mask = (data.index >= start_ts) & (data.index <= end_ts)
+                            data = data.loc[mask]
 
                         if len(data) >= 50:
                             # Run professional backtest
