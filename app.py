@@ -1102,11 +1102,42 @@ def display_price_ticker():
             now = datetime.now()
             is_weekend = now.weekday() >= 5
         else:
-            # Fallback to Yahoo Finance
+            # Fallback to Yahoo Finance with cache-busting
             import yfinance as yf
+            from datetime import datetime, timedelta
+
+            # Force fresh data by using different periods and clearing cache
             ticker = yf.Ticker('GC=F')
-            hist_data = ticker.history(period='2d', interval='1m')
-            print("🔍 DEBUG: Using Yahoo Finance for real-time metrics")
+
+            # Try multiple approaches to get fresh data
+            hist_data = None
+            for period in ['1d', '2d', '5d']:
+                try:
+                    print(f"🔍 DEBUG: Trying Yahoo Finance with period={period}")
+                    hist_data = ticker.history(period=period, interval='1m', prepost=True, auto_adjust=True, back_adjust=False)
+                    if not hist_data.empty:
+                        latest_price = hist_data['Close'].iloc[-1]
+                        print(f"🔍 DEBUG: Yahoo Finance {period} returned: ${latest_price:.2f}")
+                        if latest_price > 0:  # Valid price
+                            break
+                except Exception as e:
+                    print(f"🔍 DEBUG: Yahoo Finance {period} failed: {e}")
+                    continue
+
+            if hist_data is None or hist_data.empty:
+                # Last resort - try different ticker symbols
+                for symbol in ['GC=F', 'GOLD', 'IAU']:
+                    try:
+                        print(f"🔍 DEBUG: Trying symbol {symbol}")
+                        ticker = yf.Ticker(symbol)
+                        hist_data = ticker.history(period='1d', interval='5m')
+                        if not hist_data.empty:
+                            print(f"🔍 DEBUG: Symbol {symbol} worked")
+                            break
+                    except:
+                        continue
+
+            print(f"🔍 DEBUG: Final Yahoo Finance data: {len(hist_data) if hist_data is not None else 0} candles")
 
         if not hist_data.empty:
             current_price = float(hist_data['Close'].iloc[-1])
@@ -1229,11 +1260,22 @@ def display_performance_metrics():
     """Display bot performance metrics with fixed layout"""
 
     try:
-        # Get real gold price
+        # Get real gold price with cache-busting
         import yfinance as yf
-        ticker = yf.Ticker('GC=F')
-        data = ticker.history(period='1d', interval='1m')
-        current_gold_price = float(data['Close'].iloc[-1]) if not data.empty else 0
+
+        # Try multiple approaches to get fresh data
+        current_gold_price = 0
+        for period in ['1d', '2d']:
+            try:
+                ticker = yf.Ticker('GC=F')
+                data = ticker.history(period=period, interval='1m', prepost=True, auto_adjust=True)
+                if not data.empty:
+                    current_gold_price = float(data['Close'].iloc[-1])
+                    print(f"🔍 DEBUG: Performance section got ${current_gold_price:.2f} from {period}")
+                    break
+            except Exception as e:
+                print(f"🔍 DEBUG: Performance Yahoo Finance {period} failed: {e}")
+                continue
 
         # Get bot status
         active_positions = 0
