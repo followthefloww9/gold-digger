@@ -1554,91 +1554,44 @@ def display_backtesting_section():
                     else:
                         st.info("📊 Equity curve data not available for plotting")
 
-                # Show trade details if available
+                # Show trade summary safely without React errors
                 if results.get('trades') and len(results['trades']) > 0:
                     st.write("#### 📋 Trade Summary")
 
-                    # Convert trades list to DataFrame for display
-                    trades_list = results['trades']
-                    if isinstance(trades_list, list) and len(trades_list) > 0:
-                        # Convert list of trade dictionaries to display format
-                        trades_display = []
-                        for trade in trades_list[:10]:  # Show last 10 trades
-                            try:
-                                entry_time = trade.get('entry_time', 'N/A')
-                                exit_time = trade.get('exit_time', 'N/A')
+                    trades_count = len(results['trades'])
+                    st.info(f"📊 {trades_count} trades executed during backtesting period")
 
-                                # Format times if they're datetime objects
-                                if hasattr(entry_time, 'strftime'):
-                                    entry_str = entry_time.strftime('%m/%d %H:%M')
-                                else:
-                                    entry_str = str(entry_time)
+                    # Show simple trade statistics instead of detailed table
+                    try:
+                        trades_list = results['trades']
+                        if trades_list and len(trades_list) > 0:
+                            # Calculate simple stats
+                            profitable_trades = sum(1 for trade in trades_list if trade.get('profit', 0) > 0)
+                            losing_trades = trades_count - profitable_trades
 
-                                if hasattr(exit_time, 'strftime'):
-                                    exit_str = exit_time.strftime('%m/%d %H:%M')
-                                else:
-                                    exit_str = str(exit_time)
-
-                                trades_display.append({
-                                    'Entry': entry_str,
-                                    'Exit': exit_str,
-                                    'Type': trade.get('type', 'N/A'),
-                                    'Entry Price': f"${trade.get('entry_price', 0):.2f}",
-                                    'Exit Price': f"${trade.get('exit_price', 0):.2f}",
-                                    'P&L': f"${trade.get('profit', 0):.2f}",
-                                    'Reason': trade.get('exit_reason', 'N/A')
-                                })
-                            except Exception as e:
-                                # Skip problematic trades
-                                continue
-
-                        trades_compact = trades_display
-                    else:
-                        trades_compact = []
-
-                    if trades_compact:
-                        # Use simple table display to avoid React errors
-                        st.write("📊 **Recent Trades:**")
-
-                        # Create header
-                        col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 1, 1, 1])
-                        with col1:
-                            st.write("**Entry/Exit**")
-                        with col2:
-                            st.write("**Type**")
-                        with col3:
-                            st.write("**Entry Price**")
-                        with col4:
-                            st.write("**Exit Price**")
-                        with col5:
-                            st.write("**P&L**")
-
-                        st.divider()
-
-                        # Display trades
-                        for i, trade in enumerate(trades_compact[:10]):
-                            col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 1, 1, 1])
+                            # Show basic stats
+                            col1, col2, col3 = st.columns(3)
                             with col1:
-                                st.write(f"{trade.get('Entry', 'N/A')}")
-                                st.write(f"{trade.get('Exit', 'N/A')}")
+                                st.metric("Total Trades", trades_count)
                             with col2:
-                                st.write(f"{trade.get('Type', 'N/A')}")
-                                st.write(f"{trade.get('Reason', 'N/A')}")
+                                st.metric("Profitable", f"{profitable_trades} ({profitable_trades/trades_count*100:.1f}%)")
                             with col3:
-                                st.write(f"{trade.get('Entry Price', 'N/A')}")
-                            with col4:
-                                st.write(f"{trade.get('Exit Price', 'N/A')}")
-                            with col5:
-                                pnl = trade.get('P&L', '$0.00')
-                                if '$' in str(pnl) and float(str(pnl).replace('$', '').replace(',', '')) >= 0:
-                                    st.write(f"🟢 {pnl}")
-                                else:
-                                    st.write(f"🔴 {pnl}")
+                                st.metric("Losing", f"{losing_trades} ({losing_trades/trades_count*100:.1f}%)")
 
-                            if i < min(len(trades_compact), 10) - 1:
-                                st.divider()
-                    else:
-                        st.info("📊 No trade details available")
+                            # Show recent trades as simple text
+                            st.write("**Recent Trades:**")
+                            for i, trade in enumerate(trades_list[-5:]):  # Last 5 trades
+                                trade_type = trade.get('type', 'N/A')
+                                profit = trade.get('profit', 0)
+                                entry_price = trade.get('entry_price', 0)
+                                exit_price = trade.get('exit_price', 0)
+
+                                profit_emoji = "🟢" if profit >= 0 else "🔴"
+                                st.write(f"{profit_emoji} **{trade_type}** | Entry: ${entry_price:.2f} | Exit: ${exit_price:.2f} | P&L: ${profit:.2f}")
+                    except Exception as e:
+                        st.write("📊 Trade details processing...")
+                else:
+                    st.info("📊 No trades executed during this backtesting period")
 
                     if len(results['trades']) > 10:
                         st.caption(f"Showing first 10 of {len(results['trades'])} trades")
