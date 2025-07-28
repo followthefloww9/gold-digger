@@ -844,7 +844,8 @@ def get_real_market_data(timeframe='M5', count=200):
                 # Rename columns for chart compatibility
                 df_chart = df.reset_index()
                 df_chart.rename(columns={
-                    'time': 'datetime',
+                    'Time': 'datetime',  # Fixed: 'Time' not 'time'
+                    'time': 'datetime',  # Keep both for compatibility
                     'Open': 'open',
                     'High': 'high',
                     'Low': 'low',
@@ -1033,8 +1034,11 @@ def display_price_ticker():
         mt5_data = get_real_market_data('M5', 300)  # Get more data for better metrics
 
         if mt5_data is not None and not mt5_data.empty and ('close' in mt5_data.columns or 'Close' in mt5_data.columns):
-            # Use MT5 data
-            hist_data = mt5_data.set_index('datetime')
+            # Use MT5 data - fix column mapping first
+            mt5_data_fixed = mt5_data.copy()
+            if 'Time' in mt5_data_fixed.columns:
+                mt5_data_fixed.rename(columns={'Time': 'datetime'}, inplace=True)
+            hist_data = mt5_data_fixed.set_index('datetime')
             # Handle both lowercase and uppercase column names
             column_mapping = {}
             for col in mt5_data.columns:
@@ -1303,8 +1307,11 @@ def display_recent_signals():
         # Get real market data for analysis
         chart_data = get_real_market_data('M5', 50)
 
-        # Prepare data for analysis
-        df_analysis = chart_data.set_index('datetime')
+        # Prepare data for analysis - fix column mapping first
+        chart_data_fixed = chart_data.copy()
+        if 'Time' in chart_data_fixed.columns:
+            chart_data_fixed.rename(columns={'Time': 'datetime'}, inplace=True)
+        df_analysis = chart_data_fixed.set_index('datetime')
         df_analysis.rename(columns={
             'open': 'Open', 'high': 'High', 'low': 'Low',
             'close': 'Close', 'volume': 'Volume'

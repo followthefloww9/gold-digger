@@ -114,84 +114,87 @@ class MT5MacOSBridge:
             return {"success": False, "message": f"Error: {str(e)}"}
     
     def get_market_data(self, symbol="XAUUSD", timeframe="M15", count=100):
-        """Get market data - prioritize MT5 if available, fallback to Yahoo"""
+        """Get market data - prioritize live data sources"""
         if not self.connected:
             return pd.DataFrame()
-        
+
         try:
-            if self.mt5_running:
-                # Try to get data from MT5 directly
-                logger.info(f"📊 Getting {symbol} data from MT5 ({timeframe}, {count} candles)")
-                
-                # For now, simulate MT5 data structure
-                # In practice, this would call MT5 API
-                dates = pd.date_range(
-                    start=datetime.now() - timedelta(hours=count * 0.25), 
-                    periods=count, 
-                    freq='15min'
-                )
-                
-                # Generate realistic gold price data
-                base_price = 2675.0
-                data = []
-                
-                for i, date in enumerate(dates):
-                    price_variation = (i % 20 - 10) * 0.5  # Small variations
-                    open_price = base_price + price_variation
-                    high_price = open_price + abs(price_variation) * 0.3
-                    low_price = open_price - abs(price_variation) * 0.3
-                    close_price = open_price + (price_variation * 0.1)
-                    
-                    data.append({
-                        'datetime': date,
-                        'open': round(open_price, 2),
-                        'high': round(high_price, 2),
-                        'low': round(low_price, 2),
-                        'close': round(close_price, 2),
-                        'volume': 1000 + (i % 500)
-                    })
-                
-                df = pd.DataFrame(data)
-                logger.info(f"✅ MT5 data retrieved: {len(df)} candles")
-                return df
-                
-            else:
-                # Fallback to Yahoo Finance but label it properly
-                logger.info(f"📊 Getting {symbol} data from Yahoo Finance (MT5 fallback)")
-                
-                import yfinance as yf
-                
-                # Map MT5 symbols to Yahoo symbols
-                yahoo_symbol = "GC=F" if symbol == "XAUUSD" else symbol
-                
-                # Get data from Yahoo
-                ticker = yf.Ticker(yahoo_symbol)
-                data = ticker.history(period="5d", interval="15m")
-                
-                if not data.empty:
-                    # Convert to MT5-like format
-                    df = pd.DataFrame({
-                        'datetime': data.index,
-                        'open': data['Open'].values,
-                        'high': data['High'].values,
-                        'low': data['Low'].values,
-                        'close': data['Close'].values,
-                        'volume': data['Volume'].values
-                    })
-                    
-                    # Take last 'count' candles
-                    df = df.tail(count).reset_index(drop=True)
-                    
-                    logger.info(f"✅ Yahoo Finance data (MT5 format): {len(df)} candles")
-                    return df
-                else:
-                    logger.error("❌ No data available")
-                    return pd.DataFrame()
-                
+            # Always use live data sources since MT5 bridge isn't fully implemented
+            logger.info(f"📊 Getting {symbol} live data from Yahoo Finance")
+            return self._get_yahoo_data(symbol, timeframe, count)
+
         except Exception as e:
-            logger.error(f"Error getting market data: {str(e)}")
+            logger.error(f"❌ Error getting market data: {e}")
             return pd.DataFrame()
-    
+
+    def _get_yahoo_data(self, symbol="XAUUSD", timeframe="M15", count=100):
+        """Get live data from Yahoo Finance"""
+        try:
+            import yfinance as yf
+
+            # Map symbols to Yahoo Finance tickers
+            symbol_map = {
+                'XAUUSD': 'GC=F',  # Gold futures
+                'GOLD': 'GC=F',
+                'XAU/USD': 'GC=F'
+            }
+
+            ticker_symbol = symbol_map.get(symbol, 'GC=F')
+
+            # Map timeframes
+            interval_map = {
+                'M1': '1m',
+                'M5': '5m',
+                'M15': '15m',
+                'M30': '30m',
+                'H1': '1h',
+                'H4': '4h',
+                'D1': '1d'
+            }
+
+            interval = interval_map.get(timeframe, '15m')
+
+            # Calculate period based on count and timeframe
+            if interval in ['1m', '5m']:
+                period = '1d'  # Last day for minute data
+            elif interval in ['15m', '30m']:
+                period = '5d'  # Last 5 days
+            elif interval in ['1h', '4h']:
+                period = '1mo'  # Last month
+            else:
+                period = '3mo'  # Last 3 months
+
+            # Get data from Yahoo Finance
+            ticker = yf.Ticker(ticker_symbol)
+            hist = ticker.history(period=period, interval=interval)
+
+            if hist.empty:
+                logger.warning(f"⚠️ No data from Yahoo Finance for {symbol}")
+                return pd.DataFrame()
+
+            # Take the most recent 'count' candles
+            hist = hist.tail(count)
+
+            # Rename columns to match our format
+            df = pd.DataFrame({
+                'Time': hist.index,
+                'Open': hist['Open'].round(2),
+                'High': hist['High'].round(2),
+                'Low': hist['Low'].round(2),
+                'Close': hist['Close'].round(2),
+                'Volume': hist['Volume'].fillna(1000)
+            })
+
+            # Reset index to make Time a column
+            df = df.reset_index(drop=True)
+
+            logger.info(f"✅ Live data retrieved: {len(df)} candles, latest price: ${df.iloc[-1]['Close']:.2f}")
+            return df
+
+        except Exception as e:
+            logger.error(f"❌ Error getting Yahoo Finance data: {e}")
+            return pd.DataFrame()
+
     def place_order(self, symbol, side, volume, order_type='MARKET', price=None):
         """Place order using MT5 credentials"""
         if not self.connected:
