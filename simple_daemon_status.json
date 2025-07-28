@@ -1,0 +1,10 @@
+{
+  "last_heartbeat": "2025-07-28T17:06:11.316909",
+  "uptime": "0:04:00.047192",
+  "trades_today": 0,
+  "open_positions": 0,
+  "paper_trading": true,
+  "risk_percentage": 1.0,
+  "max_risk_amount": 1000.0,
+  "engine_status": "running"
+}
