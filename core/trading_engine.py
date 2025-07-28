@@ -49,20 +49,109 @@ class TradingEngine:
                 self.use_mql5_bridge = False
         
         logger.info("TradingEngine initialized")
-    
+
+    def _ensure_dataframe(self, market_data) -> Optional[pd.DataFrame]:
+        """
+        Convert market data to pandas DataFrame format
+
+        Args:
+            market_data: Market data in various formats (DataFrame, dict, list)
+
+        Returns:
+            pandas DataFrame or None if conversion fails
+        """
+        try:
+            if isinstance(market_data, pd.DataFrame):
+                return market_data
+
+            elif isinstance(market_data, dict):
+                # Convert dict to DataFrame
+                if all(key in market_data for key in ['Close', 'High', 'Low']):
+                    # Handle dict with lists as values
+                    if isinstance(market_data['Close'], list):
+                        df = pd.DataFrame(market_data)
+
+                        # Ensure required columns exist
+                        required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+                        for col in required_cols:
+                            if col not in df.columns:
+                                if col == 'Open':
+                                    df[col] = df['Close'].shift(1).fillna(df['Close'])
+                                elif col == 'Volume':
+                                    df[col] = 1000  # Default volume
+                                else:
+                                    df[col] = df['Close']
+
+                        # Create datetime index if not present
+                        if df.index.dtype != 'datetime64[ns]':
+                            df.index = pd.date_range(start='2024-01-01', periods=len(df), freq='5min')
+
+                        return df
+                    else:
+                        # Single row dict
+                        df = pd.DataFrame([market_data])
+                        return df
+                else:
+                    logger.warning("⚠️ Dict missing required price columns")
+                    return None
+
+            elif isinstance(market_data, list):
+                # Convert list to DataFrame
+                if len(market_data) > 0:
+                    if isinstance(market_data[0], dict):
+                        # List of dicts
+                        df = pd.DataFrame(market_data)
+                    else:
+                        # List of values - assume Close prices
+                        df = pd.DataFrame({
+                            'Close': market_data,
+                            'High': market_data,
+                            'Low': market_data,
+                            'Open': market_data,
+                            'Volume': [1000] * len(market_data)
+                        })
+
+                    # Create datetime index
+                    if df.index.dtype != 'datetime64[ns]':
+                        df.index = pd.date_range(start='2024-01-01', periods=len(df), freq='5min')
+
+                    return df
+                else:
+                    logger.warning("⚠️ Empty list provided")
+                    return None
+
+            else:
+                logger.warning(f"⚠️ Unsupported market data type: {type(market_data)}")
+                return None
+
+        except Exception as e:
+            logger.error(f"❌ Error converting market data to DataFrame: {e}")
+            return None
+
     def analyze_market_setup(self, market_data: pd.DataFrame) -> Dict[str, any]:
         """
         Analyze current market setup using SMC principles
-        
+
         Args:
             market_data: DataFrame with OHLCV data
-            
+
         Returns:
             Dictionary with market analysis
         """
         try:
+            # Ensure we have a valid DataFrame
+            if market_data is None or len(market_data) == 0:
+                return {
+                    'error': 'No market data available',
+                    'current_price': 0.0,
+                    'trend': 'UNKNOWN',
+                    'order_blocks': [],
+                    'liquidity_zones': [],
+                    'setup_quality': 0
+                }
+
             from .indicators import SMCIndicators
-            
+
             smc = SMCIndicators()
             analysis = smc.analyze_market_structure(market_data)
             
@@ -291,20 +380,31 @@ class TradingEngine:
             logger.error(f"Error calculating position size: {str(e)}")
             return {'lot_size': 0.01, 'risk_amount': 0.0, 'pip_value': 1.0}
     
-    def generate_trade_signal(self, market_data: pd.DataFrame, account_info: Dict) -> Dict[str, any]:
+    def generate_trade_signal(self, market_data, account_info: Dict) -> Dict[str, any]:
         """
         Generate complete trade signal with all parameters
-        
+
         Args:
-            market_data: Market price data
+            market_data: Market price data (DataFrame, dict, or list)
             account_info: Account information
-            
+
         Returns:
             Complete trade signal
         """
         try:
+            # Convert market_data to DataFrame if needed
+            df = self._ensure_dataframe(market_data)
+
+            if df is None or len(df) == 0:
+                return {
+                    'signal': 'HOLD',
+                    'confidence': 0.0,
+                    'reasons': ['No valid market data'],
+                    'analysis': {'error': 'Invalid market data format'}
+                }
+
             # Analyze market setup
-            analysis = self.analyze_market_setup(market_data)
+            analysis = self.analyze_market_setup(df)
             
             # Validate setup
             validation = self.validate_trade_setup(analysis)

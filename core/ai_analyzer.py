@@ -42,11 +42,29 @@ class AIAnalyzer:
         
         try:
             # Use Gemini client for analysis
-            response = self.gemini_client.get_trading_decision(prompt)
-            
+            # Convert prompt to market context format
+            market_context = {
+                'prompt': prompt,
+                'current_price': 3340.0,  # Default price
+                'analysis_request': prompt
+            }
+
+            response = self.gemini_client.get_trade_decision(market_context)
+
             if response and 'analysis' in response:
                 return response['analysis']
-            elif response and 'error' not in response:
+            elif response and isinstance(response, dict):
+                # Extract analysis from trade decision response
+                analysis_parts = []
+                if 'trade_decision' in response:
+                    analysis_parts.append(f"Decision: {response['trade_decision']}")
+                if 'reasoning' in response:
+                    analysis_parts.append(f"Reasoning: {response['reasoning']}")
+                if 'market_outlook' in response:
+                    analysis_parts.append(f"Outlook: {response['market_outlook']}")
+
+                return " | ".join(analysis_parts) if analysis_parts else str(response)
+            elif response and 'error' not in str(response):
                 # If response is a string, return it directly
                 return str(response)
             else:
@@ -74,13 +92,15 @@ class AIAnalyzer:
         
         try:
             # Format market data for Gemini
-            prompt = f"Analyze this gold market data for trading signals: {market_data}"
-            if context:
-                prompt += f" Context: {context}"
-            
+            market_context = {
+                'market_data': market_data,
+                'context': context,
+                'current_price': market_data.get('Close', [3340.0])[-1] if isinstance(market_data, dict) else 3340.0
+            }
+
             # Get trading decision from Gemini
-            response = self.gemini_client.get_trading_decision(prompt)
-            
+            response = self.gemini_client.get_trade_decision(market_context)
+
             if response and isinstance(response, dict):
                 return response
             else:
@@ -107,13 +127,25 @@ class AIAnalyzer:
         
         try:
             # Format trade data for risk analysis
-            prompt = f"Assess the risk for this gold trade: {trade_data}"
-            
-            # Get risk analysis from Gemini
-            response = self.gemini_client.analyze_risk(trade_data)
-            
+            market_context = {
+                'trade_data': trade_data,
+                'risk_analysis_request': True,
+                'current_price': trade_data.get('entry_price', 3340.0)
+            }
+
+            # Get risk analysis from Gemini (using trade decision method)
+            response = self.gemini_client.get_trade_decision(market_context)
+
             if response and isinstance(response, dict):
-                return response
+                # Extract risk-related information
+                risk_assessment = {
+                    'risk_level': response.get('confidence_score', 0.5),
+                    'stop_loss': response.get('stop_loss', 0),
+                    'take_profit': response.get('take_profit', 0),
+                    'risk_reward_ratio': response.get('risk_reward_ratio', 1.0),
+                    'analysis': response.get('reasoning', 'No risk analysis available')
+                }
+                return risk_assessment
             else:
                 logger.warning("⚠️ No valid risk assessment from Gemini")
                 return None

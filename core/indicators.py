@@ -33,20 +33,42 @@ class SMCIndicators:
             DataFrame with added indicators
         """
         try:
+            if df is None or len(df) == 0:
+                logger.warning("⚠️ Empty DataFrame provided to add_basic_indicators")
+                return df
+
+            # Ensure required columns exist
+            required_cols = ['Open', 'High', 'Low', 'Close']
+            for col in required_cols:
+                if col not in df.columns:
+                    logger.warning(f"⚠️ Missing column {col}, using Close price")
+                    df[col] = df.get('Close', 0)
+
             # Calculate VWAP (Volume Weighted Average Price)
             df['VWAP'] = self._calculate_vwap(df)
-            
-            # Calculate EMAs
-            df['EMA_21'] = df['Close'].ewm(span=21).mean()
-            df['EMA_50'] = df['Close'].ewm(span=50).mean()
-            df['EMA_200'] = df['Close'].ewm(span=200).mean()
-            
+
+            # Calculate EMAs with minimum period checks
+            if len(df) >= 21:
+                df['EMA_21'] = df['Close'].ewm(span=21, adjust=False).mean()
+            else:
+                df['EMA_21'] = df['Close']
+
+            if len(df) >= 50:
+                df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
+            else:
+                df['EMA_50'] = df['Close']
+
+            if len(df) >= 200:
+                df['EMA_200'] = df['Close'].ewm(span=200, adjust=False).mean()
+            else:
+                df['EMA_200'] = df['Close']
+
             # Calculate RSI
             df['RSI'] = self._calculate_rsi(df['Close'], period=14)
-            
+
             # Calculate ATR (Average True Range)
             df['ATR'] = self._calculate_atr(df, period=14)
-            
+
             logger.info("Basic indicators added successfully")
             return df
             
@@ -57,13 +79,25 @@ class SMCIndicators:
     def _calculate_vwap(self, df: pd.DataFrame) -> pd.Series:
         """Calculate Volume Weighted Average Price"""
         try:
+            if df is None or len(df) == 0:
+                return pd.Series(dtype=float)
+
             typical_price = (df['High'] + df['Low'] + df['Close']) / 3
-            volume = df.get('Volume', pd.Series([1] * len(df), index=df.index))  # Default volume if not available
-            
+
+            # Ensure volume is a Series with proper index
+            if 'Volume' in df.columns:
+                volume = df['Volume']
+            else:
+                volume = pd.Series([1000] * len(df), index=df.index)
+
+            # Ensure volume is numeric
+            volume = pd.to_numeric(volume, errors='coerce').fillna(1000)
+
             cumulative_volume = volume.cumsum()
             cumulative_price_volume = (typical_price * volume).cumsum()
-            
-            vwap = cumulative_price_volume / cumulative_volume
+
+            # Avoid division by zero
+            vwap = cumulative_price_volume / cumulative_volume.replace(0, 1)
             return vwap.fillna(typical_price)
             
         except Exception as e:
@@ -301,14 +335,26 @@ class SMCIndicators:
     def analyze_market_structure(self, df: pd.DataFrame) -> Dict[str, any]:
         """
         Comprehensive market structure analysis
-        
+
         Args:
             df: DataFrame with OHLCV data
-            
+
         Returns:
             Complete market structure analysis
         """
         try:
+            if df is None or len(df) == 0:
+                logger.warning("⚠️ Empty DataFrame provided to analyze_market_structure")
+                return {
+                    'current_price': 0.0,
+                    'trend': 'UNKNOWN',
+                    'order_blocks': [],
+                    'liquidity_zones': [],
+                    'session_levels': {},
+                    'setup_quality': 0,
+                    'error': 'No market data available'
+                }
+
             # Add basic indicators
             df_with_indicators = self.add_basic_indicators(df.copy())
             
