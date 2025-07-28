@@ -1406,27 +1406,89 @@ def display_backtesting_section():
         end_date = st.date_input("End Date", value=pd.to_datetime("2024-01-31"))
 
     if st.button("🚀 Run Backtest", type="primary"):
-        with st.spinner("Running professional backtest with VectorBT..."):
+        with st.spinner("Running professional backtest with Gold Digger AI..."):
             try:
-                # Import the reliable simple backtester
-                from backtest.simple_backtester import run_simple_backtest
+                # Use our new professional backtesting engine
+                from core.backtesting_engine import BacktestingEngine
+                from core.mt5_connector import MT5Connector
 
-                st.info("📊 Fetching real gold market data and running backtest...")
+                st.info("📊 Fetching real gold market data and running AI backtest...")
 
-                # Run the reliable backtest
-                results = run_simple_backtest(
-                    start_date=pd.to_datetime(start_date),
-                    end_date=pd.to_datetime(end_date),
-                    initial_capital=100000
-                )
+                # Get real market data
+                connector = MT5Connector()
+                init_result = connector.initialize_mt5()
 
-                if not results['success']:
-                    st.error("❌ Backtest failed - No market data available for selected period")
+                if init_result['success']:
+                    # Calculate data range
+                    days_diff = (pd.to_datetime(end_date) - pd.to_datetime(start_date)).days
+                    candles_needed = min(days_diff * 288, 2000)  # 288 5-min candles per day
+
+                    # Get market data
+                    data = connector.get_market_data('XAUUSD', 'M5', candles_needed)
+
+                    if data is not None and not data.empty:
+                        # Ensure data has proper datetime index
+                        if 'Time' in data.columns and data.index.name != 'Time':
+                            data = data.set_index('Time')
+
+                        # Convert index to datetime if needed
+                        if not pd.api.types.is_datetime64_any_dtype(data.index):
+                            data.index = pd.to_datetime(data.index)
+
+                        # Filter data by date range (use .loc for safety)
+                        start_ts = pd.to_datetime(start_date)
+                        end_ts = pd.to_datetime(end_date)
+
+                        # Filter data
+                        mask = (data.index >= start_ts) & (data.index <= end_ts)
+                        data = data.loc[mask]
+
+                        if len(data) >= 50:
+                            # Run professional backtest
+                            engine = BacktestingEngine()
+                            results = engine.run_backtest(
+                                data=data,
+                                initial_balance=100000,
+                                start_date=pd.to_datetime(start_date),
+                                end_date=pd.to_datetime(end_date),
+                                lot_size=0.01
+                            )
+
+                            # Convert to expected format
+                            if 'error' not in results:
+                                results['success'] = True
+                            else:
+                                results = {'success': False, 'error': results['error']}
+                        else:
+                            results = {'success': False, 'error': 'Insufficient data for selected period'}
+                    else:
+                        results = {'success': False, 'error': 'No market data available'}
+                else:
+                    # Fallback to simple backtester
+                    from backtest.simple_backtester import run_simple_backtest
+                    results = run_simple_backtest(
+                        start_date=pd.to_datetime(start_date),
+                        end_date=pd.to_datetime(end_date),
+                        initial_capital=100000
+                    )
+
+                if not results.get('success', False):
+                    error_msg = results.get('error', 'Unknown error')
+                    st.error(f"❌ Backtest failed - {error_msg}")
                     st.info("💡 Try selecting a more recent date range (last 30 days)")
                     return
 
-                # Display results
-                st.success("✅ Backtest completed with real market data!")
+                # Display results with timestamp to show freshness
+                import datetime
+                timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+                st.success(f"✅ Backtest completed with real market data! (Updated: {timestamp})")
+
+                # Show data source and freshness info
+                data_source = results.get('data_source', 'Unknown')
+                data_points = results.get('data_points', 0)
+                period = results.get('period', 'Unknown')
+
+                st.info(f"📊 Data: {data_points} points from {data_source} | Period: {period}")
 
                 # Key metrics in compact layout with better formatting
                 col1, col2, col3, col4 = st.columns([1, 1, 1, 1], gap="medium")
