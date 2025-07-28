@@ -637,7 +637,7 @@ def main():
         timeframe = st.selectbox(
             "Chart Timeframe",
             ["M1", "M5", "M15", "H1", "H4"],
-            index=1  # Default to M5
+            index=0  # Default to M1 (1 minute for faster analysis)
         )
         
         # Number of candles
@@ -708,7 +708,7 @@ def main():
 
             # Fallback chart
             import numpy as np
-            dates = pd.date_range(start='2025-01-26', periods=50, freq='5min')
+            dates = pd.date_range(start='2025-01-26', periods=50, freq='1min')
             fallback_data = pd.DataFrame({
                 'datetime': dates,
                 'open': 2675 + np.random.randn(50) * 2,
@@ -816,7 +816,7 @@ def get_current_gold_price():
         print(f"Error getting current gold price: {e}")
         return None
 
-def get_real_market_data(timeframe='M5', count=200):
+def get_real_market_data(timeframe='M1', count=200):
     """Get real market data from MT5 or fallback to demo data"""
     try:
         from core.mt5_connector import MT5Connector
@@ -902,7 +902,7 @@ def generate_sample_chart_data():
 
     # Generate 200 sample candles
     dates = pd.date_range(start=datetime.now() - timedelta(hours=200),
-                         end=datetime.now(), freq='5min')
+                         end=datetime.now(), freq='1min')
 
     # Simulate gold price movement around 1985
     base_price = 1985.0
@@ -1050,7 +1050,7 @@ def display_price_ticker():
         st.info("📡 Fetching real-time gold price...")
 
         # Try to get data from MT5 first
-        mt5_data = get_real_market_data('M5', 300)  # Get more data for better metrics
+        mt5_data = get_real_market_data('M1', 300)  # Get more data for better metrics
 
         if mt5_data is not None and not mt5_data.empty and ('close' in mt5_data.columns or 'Close' in mt5_data.columns):
             # Use MT5 data - fix column mapping first
@@ -1084,7 +1084,7 @@ def display_price_ticker():
             # Fallback to Yahoo Finance
             import yfinance as yf
             ticker = yf.Ticker('GC=F')
-            hist_data = ticker.history(period='2d', interval='5m')
+            hist_data = ticker.history(period='2d', interval='1m')
             print("🔍 DEBUG: Using Yahoo Finance for real-time metrics")
 
         if not hist_data.empty:
@@ -1206,7 +1206,7 @@ def display_performance_metrics():
         # Get real gold price
         import yfinance as yf
         ticker = yf.Ticker('GC=F')
-        data = ticker.history(period='1d', interval='5m')
+        data = ticker.history(period='1d', interval='1m')
         current_gold_price = float(data['Close'].iloc[-1]) if not data.empty else 0
 
         # Get bot status
@@ -1336,7 +1336,7 @@ def display_recent_signals():
         from core.historical_data import HistoricalDataFetcher
 
         # Get real market data for analysis
-        chart_data = get_real_market_data('H1', 50)  # Use hourly data for better availability
+        chart_data = get_real_market_data('M1', 50)  # Use 1-minute data for faster analysis
 
         if chart_data is None or len(chart_data) == 0:
             st.warning("⚠️ No market data available for signal generation")
@@ -1347,7 +1347,7 @@ def display_recent_signals():
             end_date = datetime.now()
             start_date = end_date - timedelta(days=30)
 
-            fallback_data = data_fetcher.get_gold_historical_data(start_date, end_date, '1h')
+            fallback_data = data_fetcher.get_gold_historical_data(start_date, end_date, '1m')
 
             if fallback_data is not None and len(fallback_data) > 0:
                 # Convert to chart format
@@ -1486,7 +1486,7 @@ def display_backtesting_section():
                 # Determine appropriate interval based on date range
                 days_diff = (end_dt - start_dt).days
                 if days_diff <= 2:
-                    interval = '5m'  # 5-minute data for short periods
+                    interval = '1m'  # 1-minute data for short periods
                 elif days_diff <= 7:
                     interval = '15m'  # 15-minute data for week
                 elif days_diff <= 30:
