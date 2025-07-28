@@ -1597,12 +1597,25 @@ def display_backtesting_section():
                         trades_compact = []
 
                     if trades_compact:
-                        st.dataframe(
-                            trades_compact,
-                            use_container_width=True,
-                            height=300,
-                            hide_index=True
-                        )
+                        try:
+                            # Convert to pandas DataFrame for proper display
+                            import pandas as pd
+                            trades_df = pd.DataFrame(trades_compact)
+
+                            st.dataframe(
+                                trades_df,
+                                use_container_width=True,
+                                height=300,
+                                hide_index=True
+                            )
+                        except Exception as e:
+                            # Fallback to simple table display
+                            st.write("📊 Recent Trades:")
+                            for i, trade in enumerate(trades_compact[:5]):
+                                st.write(f"**Trade {i+1}:** {trade.get('Type', 'N/A')} | "
+                                        f"Entry: {trade.get('Entry Price', 'N/A')} | "
+                                        f"Exit: {trade.get('Exit Price', 'N/A')} | "
+                                        f"P&L: {trade.get('P&L', 'N/A')}")
                     else:
                         st.info("📊 No trade details available")
 
