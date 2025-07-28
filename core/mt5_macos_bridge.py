@@ -114,18 +114,58 @@ class MT5MacOSBridge:
             return {"success": False, "message": f"Error: {str(e)}"}
     
     def get_market_data(self, symbol="XAUUSD", timeframe="M15", count=100):
-        """Get market data - prioritize live data sources"""
+        """Get market data - prioritize MT5 if available, fallback to Yahoo"""
         if not self.connected:
             return pd.DataFrame()
 
         try:
-            # Always use live data sources since MT5 bridge isn't fully implemented
-            logger.info(f"📊 Getting {symbol} live data from Yahoo Finance")
+            if self.mt5_running:
+                # Try to get data from MT5 directly using AppleScript
+                logger.info(f"📊 Getting {symbol} data from MT5 ({timeframe}, {count} candles)")
+
+                mt5_data = self._get_mt5_data_via_applescript(symbol, timeframe, count)
+                if mt5_data is not None and not mt5_data.empty:
+                    logger.info(f"✅ MT5 data retrieved: {len(mt5_data)} candles")
+                    return mt5_data
+                else:
+                    logger.warning(f"⚠️ MT5 data failed, falling back to Yahoo Finance")
+
+            # Fallback to Yahoo Finance
+            logger.info(f"📊 Getting {symbol} live data from Yahoo Finance (fallback)")
             return self._get_yahoo_data(symbol, timeframe, count)
 
         except Exception as e:
             logger.error(f"❌ Error getting market data: {e}")
             return pd.DataFrame()
+
+    def _get_mt5_data_via_applescript(self, symbol="XAUUSD", timeframe="M15", count=100):
+        """Get real data from MT5 using AppleScript automation"""
+        try:
+            # Map timeframes to MT5 constants
+            timeframe_map = {
+                'M1': 1, 'M5': 5, 'M15': 15, 'M30': 30,
+                'H1': 16385, 'H4': 16388, 'D1': 16408
+            }
+
+            mt5_timeframe = timeframe_map.get(timeframe, 15)
+
+            # AppleScript to get data from MT5
+            applescript = f'''
+            tell application "MetaTrader 5"
+                activate
+                -- Get current price data for {symbol}
+                set currentPrice to (do shell script "echo 'Getting MT5 data for {symbol}'")
+            end tell
+            '''
+
+            # For now, return None to trigger Yahoo fallback
+            # This is where real MT5 integration would go
+            logger.info(f"🔄 MT5 AppleScript integration not yet implemented")
+            return None
+
+        except Exception as e:
+            logger.error(f"❌ MT5 AppleScript error: {e}")
+            return None
 
     def _get_yahoo_data(self, symbol="XAUUSD", timeframe="M15", count=100):
         """Get live data from Yahoo Finance"""
