@@ -1599,7 +1599,6 @@ def display_backtesting_section():
                     if trades_compact:
                         try:
                             # Convert to pandas DataFrame for proper display
-                            import pandas as pd
                             trades_df = pd.DataFrame(trades_compact)
 
                             st.dataframe(
