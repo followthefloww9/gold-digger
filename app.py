@@ -1331,6 +1331,10 @@ def display_recent_signals():
     """Display recent trading signals with real AI analysis"""
 
     try:
+        # Import datetime at function level to avoid scope issues
+        from datetime import datetime, timedelta
+        from core.historical_data import HistoricalDataFetcher
+
         # Get real market data for analysis
         chart_data = get_real_market_data('H1', 50)  # Use hourly data for better availability
 
@@ -1339,9 +1343,6 @@ def display_recent_signals():
             st.info("📊 Trying alternative data source...")
 
             # Fallback to historical data
-            from core.historical_data import HistoricalDataFetcher
-            from datetime import datetime, timedelta
-
             data_fetcher = HistoricalDataFetcher()
             end_date = datetime.now()
             start_date = end_date - timedelta(days=30)
