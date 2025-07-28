@@ -1046,8 +1046,21 @@ def display_price_ticker():
     st.write("💰 **Live Gold Price (XAU/USD)**")
 
     try:
-        # Get REAL gold price data from MT5 or fallback to Yahoo Finance
-        st.info("📡 Fetching real-time gold price...")
+        # Force fresh data every time - clear any cached prices
+        if hasattr(st.session_state, 'current_gold_price'):
+            del st.session_state.current_gold_price
+        if hasattr(st.session_state, 'data_source_info'):
+            del st.session_state.data_source_info
+
+        # Add refresh button to force price update
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            if st.button("🔄 Refresh Price", help="Force refresh current gold price"):
+                st.rerun()
+
+        with col1:
+            # Get REAL gold price data from MT5 or fallback to Yahoo Finance
+            st.info("📡 Fetching fresh real-time gold price...")
 
         # Try to get data from MT5 first
         mt5_data = get_real_market_data('M1', 300)  # Get more data for better metrics
@@ -1075,6 +1088,14 @@ def display_price_ticker():
             hist_data.rename(columns=column_mapping, inplace=True)
             print(f"🔍 DEBUG: Using MT5 data for real-time metrics. Columns: {list(hist_data.columns)}")
             print(f"🔍 DEBUG: MT5 data shape: {hist_data.shape}, price range: {hist_data['Close'].min():.2f} - {hist_data['Close'].max():.2f}")
+            print(f"🔍 DEBUG: MT5 latest timestamp: {hist_data.index[-1] if len(hist_data) > 0 else 'No data'}")
+            print(f"🔍 DEBUG: MT5 latest close price: {hist_data['Close'].iloc[-1] if len(hist_data) > 0 else 'No data'}")
+
+            # Check if we have cached price
+            if hasattr(st.session_state, 'current_gold_price'):
+                print(f"🔍 DEBUG: Previous cached price: ${st.session_state.current_gold_price:.2f}")
+            else:
+                print("🔍 DEBUG: No previous cached price")
 
             # Use real MT5 data as-is
             from datetime import datetime
@@ -1089,8 +1110,13 @@ def display_price_ticker():
 
         if not hist_data.empty:
             current_price = float(hist_data['Close'].iloc[-1])
-            # Store in session state for consistency across the app
-            st.session_state.current_gold_price = current_price
+            # Force fresh price - don't cache to prevent stuck prices
+            # st.session_state.current_gold_price = current_price  # Commented out to prevent caching
+
+            # Always get fresh data timestamp
+            from datetime import datetime
+            data_timestamp = hist_data.index[-1] if hasattr(hist_data.index[-1], 'strftime') else datetime.now()
+            print(f"🔍 DEBUG: Fresh price retrieved: ${current_price:.2f} at {data_timestamp}")
 
             # Debug logging
             print(f"🔍 DEBUG: Raw current price: {current_price}")
