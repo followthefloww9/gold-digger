@@ -1102,42 +1102,52 @@ def display_price_ticker():
             now = datetime.now()
             is_weekend = now.weekday() >= 5
         else:
-            # Fallback to Yahoo Finance with cache-busting
-            import yfinance as yf
-            from datetime import datetime, timedelta
+            # Use enhanced MT5 bridge for consistent stale data detection
+            print(f"🔍 DEBUG: Using enhanced MT5 bridge for price ticker")
+            try:
+                from core.mt5_macos_bridge import MT5MacOSBridge
+                bridge = MT5MacOSBridge()
+                bridge_data = bridge.get_market_data('XAUUSD', 'M1', 10)
 
-            # Force fresh data by using different periods and clearing cache
-            ticker = yf.Ticker('GC=F')
+                if bridge_data is not None and not bridge_data.empty:
+                    # Convert bridge data to hist_data format
+                    hist_data = bridge_data.copy()
+                    hist_data.rename(columns={
+                        'Open': 'Open',
+                        'High': 'High',
+                        'Low': 'Low',
+                        'Close': 'Close',
+                        'Volume': 'Volume'
+                    }, inplace=True)
+                    print(f"🔍 DEBUG: Enhanced bridge returned: ${hist_data['Close'].iloc[-1]:.2f}")
+                else:
+                    raise Exception("Enhanced bridge returned no data")
 
-            # Try multiple approaches to get fresh data
-            hist_data = None
-            for period in ['1d', '2d', '5d']:
-                try:
-                    print(f"🔍 DEBUG: Trying Yahoo Finance with period={period}")
-                    hist_data = ticker.history(period=period, interval='1m', prepost=True, auto_adjust=True, back_adjust=False)
-                    if not hist_data.empty:
-                        latest_price = hist_data['Close'].iloc[-1]
-                        print(f"🔍 DEBUG: Yahoo Finance {period} returned: ${latest_price:.2f}")
-                        if latest_price > 0:  # Valid price
-                            break
-                except Exception as e:
-                    print(f"🔍 DEBUG: Yahoo Finance {period} failed: {e}")
-                    continue
+            except Exception as e:
+                print(f"🔍 DEBUG: Enhanced bridge failed: {e}, falling back to direct Yahoo Finance")
+                # Fallback to direct Yahoo Finance only if bridge fails
+                import yfinance as yf
+                from datetime import datetime, timedelta
 
-            if hist_data is None or hist_data.empty:
-                # Last resort - try different ticker symbols
-                for symbol in ['GC=F', 'GOLD', 'IAU']:
-                    try:
-                        print(f"🔍 DEBUG: Trying symbol {symbol}")
-                        ticker = yf.Ticker(symbol)
-                        hist_data = ticker.history(period='1d', interval='5m')
-                        if not hist_data.empty:
-                            print(f"🔍 DEBUG: Symbol {symbol} worked")
-                            break
-                    except:
-                        continue
+                ticker = yf.Ticker('GC=F')
+                hist_data = ticker.history(period='1d', interval='1m', prepost=True, auto_adjust=True, back_adjust=False)
 
-            print(f"🔍 DEBUG: Final Yahoo Finance data: {len(hist_data) if hist_data is not None else 0} candles")
+                if hist_data.empty:
+                    # Try alternative symbols
+                    for symbol in ['GLD', 'IAU']:
+                        try:
+                            ticker = yf.Ticker(symbol)
+                            hist_data = ticker.history(period='1d', interval='5m')
+                            if not hist_data.empty:
+                                # Convert ETF to gold price approximation
+                                multiplier = 10 if symbol == 'GLD' else 50
+                                for col in ['Open', 'High', 'Low', 'Close']:
+                                    hist_data[col] = hist_data[col] * multiplier
+                                break
+                        except:
+                            continue
+
+            print(f"🔍 DEBUG: Final data: {len(hist_data) if hist_data is not None else 0} candles")
 
         if not hist_data.empty:
             current_price = float(hist_data['Close'].iloc[-1])
@@ -1263,19 +1273,33 @@ def display_performance_metrics():
         # Get real gold price with cache-busting
         import yfinance as yf
 
-        # Try multiple approaches to get fresh data
+        # Use enhanced MT5 bridge for consistent pricing
         current_gold_price = 0
-        for period in ['1d', '2d']:
-            try:
-                ticker = yf.Ticker('GC=F')
-                data = ticker.history(period=period, interval='1m', prepost=True, auto_adjust=True)
-                if not data.empty:
-                    current_gold_price = float(data['Close'].iloc[-1])
-                    print(f"🔍 DEBUG: Performance section got ${current_gold_price:.2f} from {period}")
-                    break
-            except Exception as e:
-                print(f"🔍 DEBUG: Performance Yahoo Finance {period} failed: {e}")
-                continue
+        try:
+            from core.mt5_macos_bridge import MT5MacOSBridge
+            bridge = MT5MacOSBridge()
+            bridge_data = bridge.get_market_data('XAUUSD', 'M1', 1)
+
+            if bridge_data is not None and not bridge_data.empty:
+                current_gold_price = float(bridge_data.iloc[-1]['Close'])
+                print(f"🔍 DEBUG: Performance section got ${current_gold_price:.2f} from enhanced bridge")
+            else:
+                raise Exception("Enhanced bridge returned no data")
+
+        except Exception as e:
+            print(f"🔍 DEBUG: Enhanced bridge failed for performance: {e}")
+            # Fallback to direct Yahoo Finance
+            for period in ['1d', '2d']:
+                try:
+                    ticker = yf.Ticker('GC=F')
+                    data = ticker.history(period=period, interval='1m', prepost=True, auto_adjust=True)
+                    if not data.empty:
+                        current_gold_price = float(data['Close'].iloc[-1])
+                        print(f"🔍 DEBUG: Performance fallback got ${current_gold_price:.2f} from {period}")
+                        break
+                except Exception as e:
+                    print(f"🔍 DEBUG: Performance Yahoo Finance {period} failed: {e}")
+                    continue
 
         # Get bot status
         active_positions = 0
