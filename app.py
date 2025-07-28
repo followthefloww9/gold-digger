@@ -1597,24 +1597,46 @@ def display_backtesting_section():
                         trades_compact = []
 
                     if trades_compact:
-                        try:
-                            # Convert to pandas DataFrame for proper display
-                            trades_df = pd.DataFrame(trades_compact)
+                        # Use simple table display to avoid React errors
+                        st.write("📊 **Recent Trades:**")
 
-                            st.dataframe(
-                                trades_df,
-                                use_container_width=True,
-                                height=300,
-                                hide_index=True
-                            )
-                        except Exception as e:
-                            # Fallback to simple table display
-                            st.write("📊 Recent Trades:")
-                            for i, trade in enumerate(trades_compact[:5]):
-                                st.write(f"**Trade {i+1}:** {trade.get('Type', 'N/A')} | "
-                                        f"Entry: {trade.get('Entry Price', 'N/A')} | "
-                                        f"Exit: {trade.get('Exit Price', 'N/A')} | "
-                                        f"P&L: {trade.get('P&L', 'N/A')}")
+                        # Create header
+                        col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 1, 1, 1])
+                        with col1:
+                            st.write("**Entry/Exit**")
+                        with col2:
+                            st.write("**Type**")
+                        with col3:
+                            st.write("**Entry Price**")
+                        with col4:
+                            st.write("**Exit Price**")
+                        with col5:
+                            st.write("**P&L**")
+
+                        st.divider()
+
+                        # Display trades
+                        for i, trade in enumerate(trades_compact[:10]):
+                            col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 1, 1, 1])
+                            with col1:
+                                st.write(f"{trade.get('Entry', 'N/A')}")
+                                st.write(f"{trade.get('Exit', 'N/A')}")
+                            with col2:
+                                st.write(f"{trade.get('Type', 'N/A')}")
+                                st.write(f"{trade.get('Reason', 'N/A')}")
+                            with col3:
+                                st.write(f"{trade.get('Entry Price', 'N/A')}")
+                            with col4:
+                                st.write(f"{trade.get('Exit Price', 'N/A')}")
+                            with col5:
+                                pnl = trade.get('P&L', '$0.00')
+                                if '$' in str(pnl) and float(str(pnl).replace('$', '').replace(',', '')) >= 0:
+                                    st.write(f"🟢 {pnl}")
+                                else:
+                                    st.write(f"🔴 {pnl}")
+
+                            if i < min(len(trades_compact), 10) - 1:
+                                st.divider()
                     else:
                         st.info("📊 No trade details available")
 
