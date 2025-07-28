@@ -1532,7 +1532,7 @@ def display_backtesting_section():
                 st.caption(f"📊 Period: {results['period']} • Data points: {results['data_points']} • Source: {data_source}")
 
                 # Show equity curve if available
-                if not results['equity_curve'].empty and len(results['equity_curve']) > 1:
+                if results.get('equity_curve') and len(results['equity_curve']) > 1:
                     st.write("#### 📈 Portfolio Performance")
 
                     fig = px.line(
