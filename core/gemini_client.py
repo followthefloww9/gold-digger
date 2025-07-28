@@ -251,13 +251,18 @@ class GeminiClient:
         """
         prompt = f"""
 You are an expert XAU/USD (Gold) trading analyst specializing in Smart Money Concepts (SMC).
-Follow the EXACT 4-step SMC strategy to analyze this setup:
+Follow the EXACT institutional-grade SMC strategy from strategy.md with proven 67-78% win rate.
 
-STRATEGY STEPS TO VALIDATE:
-Step 1: Identify Liquidity - Look for session highs/lows where stops cluster
-Step 2: Liquidity Grab - Confirm stop hunt with immediate retracement
-Step 3: Structure Shift (BOS) - Validate trend change on lower timeframe
-Step 4: Retest Entry - Enter on Order Block retest with 1:2 risk-reward
+CRITICAL STRATEGY REQUIREMENTS (ALL MUST BE MET):
+Step 1: Identify Liquidity - Session highs/lows where retail stops cluster
+Step 2: Liquidity Grab - Stop hunt with immediate retracement + Order Block formation
+Step 3: Structure Shift (BOS) - Clear Break of Structure on M1/M5 timeframe
+Step 4: Retest Entry - Order Block retest with 1:2+ risk-reward minimum
+
+TIMEFRAME HIERARCHY (MANDATORY):
+- Analysis Timeframes: H1/M15 (market structure, trend direction)
+- Entry Timeframes: M1/M5 (precise entry timing, BOS confirmation)
+- Current Analysis: {market_context.get('timeframe', 'M5')} timeframe
 
 CURRENT MARKET DATA:
 - Symbol: {market_context.get('symbol', 'XAUUSD')}
@@ -270,7 +275,15 @@ SMC ANALYSIS RESULTS:
 - Liquidity Grabs: {market_context.get('liquidity_grabs', 'None detected')}
 - Break of Structure: {market_context.get('bos_analysis', 'No BOS confirmed')}
 - Order Blocks: {market_context.get('order_blocks', 'None detected')}
+- Fair Value Gaps (FVG): {market_context.get('fvg_zones', 'None detected')}
 - SMC Steps Completed: {market_context.get('smc_steps_completed', [])}
+
+TECHNICAL INDICATORS (REQUIRED CONFLUENCE):
+- VWAP Level: {market_context.get('vwap', 'Not calculated')}
+- EMA 50: {market_context.get('ema_50', 'Not available')}
+- EMA 200: {market_context.get('ema_200', 'Not available')}
+- Price vs EMA Confluence: {market_context.get('ema_confluence', 'Check manually')}
+- Session High/Low: {market_context.get('session_high_low', 'Not marked')}
 
 TECHNICAL CONFIRMATION:
 - VWAP: ${market_context.get('vwap', 'N/A')} (institutional reference)
@@ -289,24 +302,45 @@ RISK MANAGEMENT:
 - Risk per Trade: {market_context.get('risk_percentage', '1')}%
 - Max Daily Loss: ${market_context.get('max_daily_loss', '500')}
 
-TRADING SESSION CONTEXT:
-- London Session: 08:00-16:00 UTC (High volatility, trend continuation)
-- New York Session: 13:00-21:00 UTC (Breakouts, reversals)
-- Asian Session: 22:00-08:00 UTC (Range-bound, liquidity building)
+TRADING SESSION CONTEXT (STRATEGY-SPECIFIC):
+- London Session: 07:00-10:00 UTC (09:00-12:00 BG) - PRIME TIME
+- New York Session: 13:30-16:00 UTC (15:30-18:00 BG) - PRIME TIME
+- Asian Session: 22:00-07:00 UTC (Range-bound, liquidity building)
+- Current Session: {market_context.get('current_session', 'Verify manually')}
 
-ANALYSIS REQUIREMENTS:
-1. Verify ALL 4 SMC strategy steps are completed
-2. Confirm Order Block quality and freshness
-3. Validate risk-reward ratio is minimum 1:2
-4. Consider session-specific behavior patterns
-5. Ensure stop loss placement follows SMC rules (3-7 pips from OB)
+NEWS EVENT FILTER (MANDATORY CHECK):
+- High Impact News Today: {market_context.get('high_impact_news', 'VERIFY ECONOMIC CALENDAR')}
+- NFP/FOMC/Central Bank Events: {market_context.get('major_news_events', 'CHECK BEFORE TRADING')}
+- News Filter Status: {market_context.get('news_clear', 'UNKNOWN - DO NOT TRADE WITHOUT VERIFICATION')}
 
-DECISION CRITERIA:
-- ONLY trade if all 4 SMC steps are validated
-- Entry must be on Order Block retest
-- Stop loss: 3-7 pips beyond Order Block
-- Take profit: Target VWAP or 1:2 minimum ratio
-- Confidence based on setup quality and step completion
+DAILY LIMITS (RISK MANAGEMENT):
+- Trades Today: {market_context.get('daily_trades', 0)}/4 maximum per strategy
+- Daily P&L: {market_context.get('daily_pnl', 'Track manually')}
+- Best Trading Days: Tuesday, Wednesday, Thursday (per strategy backtest)
+
+ANALYSIS REQUIREMENTS (STRATEGY.MD COMPLIANCE):
+1. Verify ALL 4 SMC strategy steps are completed (mandatory)
+2. Confirm Order Block quality and freshness (institutional-grade)
+3. Validate risk-reward ratio is minimum 1:2 (target 1:2.2-1:3 per strategy)
+4. Check EMA 50/200 confluence for trend confirmation
+5. Ensure VWAP alignment for take profit targeting
+6. Verify session timing (London/NY prime time only)
+7. Confirm NO major news events (NFP, FOMC, Central Bank)
+8. Validate daily trade limit not exceeded (max 4 setups/day)
+9. Ensure stop loss placement follows SMC rules (3-7 pips from OB)
+10. Target 67-78% win rate confidence calibration
+
+DECISION CRITERIA (INSTITUTIONAL-GRADE REQUIREMENTS):
+- ONLY trade if ALL 4 SMC steps are validated + EMA confluence + session timing
+- Entry MUST be on Order Block retest with clear rejection
+- Stop loss: 3-7 pips beyond Order Block (never wider)
+- Take profit: Target VWAP or 1:2+ ratio (prefer 1:2.2-1:3 per strategy)
+- NO trading during major news events (NFP, FOMC, Central Bank)
+- Maximum 4 setups per day (quality over quantity)
+- Confidence calibrated to 67-78% win rate expectation
+- Session preference: London/NY overlap for highest probability
+
+CRITICAL: Return HOLD if ANY requirement is not met. This strategy prioritizes quality over quantity.
 
 Respond ONLY with a valid JSON object in this exact format:
 {{
@@ -316,15 +350,24 @@ Respond ONLY with a valid JSON object in this exact format:
     "stop_loss": 1980.00,
     "take_profit": 1995.00,
     "risk_reward_ratio": 2.0,
-    "reasoning": "SMC strategy validation: Step 1-4 completed, bullish OB retest with BOS confirmation",
+    "reasoning": "SMC strategy validation: Step 1-4 completed, EMA confluence confirmed, session timing optimal",
     "market_sentiment": "BULLISH|BEARISH|NEUTRAL",
     "setup_quality": "HIGH|MEDIUM|LOW",
     "smc_validation": "COMPLETE|INCOMPLETE",
-    "session_bias": "BULLISH|BEARISH|NEUTRAL"
+    "session_bias": "BULLISH|BEARISH|NEUTRAL",
+    "ema_confluence": "BULLISH|BEARISH|NEUTRAL|MISSING",
+    "news_filter_clear": "YES|NO|UNKNOWN",
+    "daily_trade_limit_ok": "YES|NO|UNKNOWN",
+    "vwap_alignment": "BULLISH|BEARISH|NEUTRAL",
+    "strategy_compliance": "FULL|PARTIAL|FAILED"
 }}
 
-CRITICAL: Only recommend BUY/SELL if ALL 4 SMC strategy steps are validated. Otherwise return HOLD.
-Confidence should reflect setup quality: HIGH=0.8-0.95, MEDIUM=0.6-0.79, LOW=0.4-0.59
+CRITICAL STRATEGY COMPLIANCE:
+- Only recommend BUY/SELL if ALL requirements are met (SMC steps + EMA + session + news filter)
+- Return HOLD if ANY element is missing or uncertain
+- Confidence calibration: HIGH=0.8-0.95 (67-78% win rate), MEDIUM=0.6-0.79, LOW=0.4-0.59
+- Strategy targets: 67-78% win rate, 1:2.2-1:3 R:R, <10% monthly drawdown
+- Quality over quantity: Better to miss a trade than take a poor setup
 """
         return prompt
     
