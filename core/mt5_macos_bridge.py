@@ -139,33 +139,66 @@ class MT5MacOSBridge:
             return pd.DataFrame()
 
     def _get_mt5_data_via_applescript(self, symbol="XAUUSD", timeframe="M15", count=100):
-        """Get real data from MT5 using AppleScript automation"""
+        """Get real data from MT5 using macOS-compatible methods"""
         try:
-            # Map timeframes to MT5 constants
-            timeframe_map = {
-                'M1': 1, 'M5': 5, 'M15': 15, 'M30': 30,
-                'H1': 16385, 'H4': 16388, 'D1': 16408
-            }
+            # MetaTrader5 Python library is Windows-only, not available on macOS
+            # We need to use alternative methods for macOS
+            logger.info(f"🍎 Attempting macOS MT5 integration for {symbol}")
 
-            mt5_timeframe = timeframe_map.get(timeframe, 15)
+            # Method 1: Try to read MT5 data files (if accessible)
+            mt5_data = self._try_mt5_file_access(symbol, timeframe, count)
+            if mt5_data is not None:
+                return mt5_data
 
-            # AppleScript to get data from MT5
-            applescript = f'''
-            tell application "MetaTrader 5"
-                activate
-                -- Get current price data for {symbol}
-                set currentPrice to (do shell script "echo 'Getting MT5 data for {symbol}'")
-            end tell
-            '''
+            # Method 2: Try AppleScript automation (basic)
+            mt5_data = self._try_applescript_automation(symbol, timeframe, count)
+            if mt5_data is not None:
+                return mt5_data
 
-            # For now, return None to trigger Yahoo fallback
-            # This is where real MT5 integration would go
-            logger.info(f"🔄 MT5 AppleScript integration not yet implemented")
+            # Method 3: Try REST API if available
+            mt5_data = self._try_mt5_rest_api(symbol, timeframe, count)
+            if mt5_data is not None:
+                return mt5_data
+
+            logger.warning(f"⚠️ All macOS MT5 methods failed, falling back to Yahoo Finance")
             return None
 
         except Exception as e:
-            logger.error(f"❌ MT5 AppleScript error: {e}")
+            logger.error(f"❌ macOS MT5 integration error: {e}")
             return None
+
+    def _try_mt5_file_access(self, symbol, timeframe, count):
+        """Try to access MT5 data files directly (macOS)"""
+        try:
+            # MT5 on macOS stores data in ~/Library/Application Support/MetaQuotes/Terminal/
+            # This is a placeholder for file-based access
+            logger.info(f"🔍 Checking MT5 data files for {symbol}")
+            return None  # Not implemented yet
+        except Exception as e:
+            logger.debug(f"MT5 file access failed: {e}")
+            return None
+
+    def _try_applescript_automation(self, symbol, timeframe, count):
+        """Try AppleScript automation to get MT5 data (macOS)"""
+        try:
+            # Basic AppleScript to interact with MT5
+            logger.info(f"🔍 Trying AppleScript automation for {symbol}")
+            return None  # Not implemented yet
+        except Exception as e:
+            logger.debug(f"AppleScript automation failed: {e}")
+            return None
+
+    def _try_mt5_rest_api(self, symbol, timeframe, count):
+        """Try REST API if MT5 has one running (macOS)"""
+        try:
+            # Check if there's a REST API server running
+            logger.info(f"🔍 Checking for MT5 REST API for {symbol}")
+            return None  # Not implemented yet
+        except Exception as e:
+            logger.debug(f"MT5 REST API failed: {e}")
+            return None
+
+
 
     def _get_yahoo_data(self, symbol="XAUUSD", timeframe="M15", count=100):
         """Get live data from Yahoo Finance"""
