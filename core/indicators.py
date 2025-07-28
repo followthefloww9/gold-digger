@@ -364,14 +364,16 @@ class SMCIndicators:
             bos_analysis = self.detect_break_of_structure(df_with_indicators)
             liquidity_grabs = self.detect_liquidity_grabs(df_with_indicators)
             
-            # Determine overall trend
+            # Determine overall trend (per strategy.md: EMA 50/200 confluence)
             current_price = df_with_indicators['Close'].iloc[-1]
             ema_21 = df_with_indicators['EMA_21'].iloc[-1]
             ema_50 = df_with_indicators['EMA_50'].iloc[-1]
-            
-            if current_price > ema_21 > ema_50:
+            ema_200 = df_with_indicators['EMA_200'].iloc[-1]
+
+            # Enhanced trend analysis with EMA 50/200 confluence (strategy.md requirement)
+            if current_price > ema_50 > ema_200:
                 trend = 'BULLISH'
-            elif current_price < ema_21 < ema_50:
+            elif current_price < ema_50 < ema_200:
                 trend = 'BEARISH'
             else:
                 trend = 'NEUTRAL'
@@ -388,6 +390,7 @@ class SMCIndicators:
                     'vwap': df_with_indicators['VWAP'].iloc[-1],
                     'ema_21': ema_21,
                     'ema_50': ema_50,
+                    'ema_200': ema_200,  # Added per strategy.md
                     'rsi': df_with_indicators['RSI'].iloc[-1],
                     'atr': df_with_indicators['ATR'].iloc[-1]
                 }

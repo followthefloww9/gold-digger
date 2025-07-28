@@ -503,11 +503,11 @@ class MT5Connector:
                 'next_open': 'Sunday 22:00 UTC'
             }
         
-        # Define trading sessions (UTC)
+        # Define trading sessions (UTC) - Updated per strategy.md
         sessions = {
-            'ASIAN': {'start': 22, 'end': 8},      # 22:00-08:00 UTC
-            'LONDON': {'start': 8, 'end': 16},     # 08:00-16:00 UTC  
-            'NEW_YORK': {'start': 13, 'end': 21}   # 13:00-21:00 UTC
+            'ASIAN': {'start': 22, 'end': 7},      # 22:00-07:00 UTC
+            'LONDON': {'start': 7, 'end': 10},     # 07:00-10:00 UTC (09:00-12:00 BG per strategy.md)
+            'NEW_YORK': {'start': 13.5, 'end': 16} # 13:30-16:00 UTC (15:30-18:00 BG per strategy.md)
         }
         
         current_hour = current_time.hour

@@ -32,8 +32,8 @@ class RiskManager:
         self.max_positions = int(os.getenv('MAX_POSITIONS', '3'))
         self.max_drawdown = 0.10  # 10% maximum drawdown
         
-        # Trading session limits
-        self.max_trades_per_day = 5
+        # Trading session limits (per strategy.md)
+        self.max_trades_per_day = 4  # Strategy.md: Maximum 3-4 setups per day
         self.max_trades_per_hour = 2
         
         # Risk tracking
