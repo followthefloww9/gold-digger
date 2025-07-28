@@ -237,13 +237,57 @@ class LiveTradingEngine:
                 logger.warning("No account info available")
                 return
             
-            # Generate trade signal (with or without AI)
-            if self.gemini_available:
-                signal = self.trading_engine.generate_trade_signal(market_data, account_info)
+            # Generate technical signal first (always use technical analysis)
+            signal = self.trading_engine.generate_trade_signal(market_data, account_info)
+
+            # Enhance signal with AI validation if available
+            if self.gemini_available and signal['signal'] != 'HOLD':
+                try:
+                    logger.info("Enhancing signal with Gemini AI validation")
+                    ai_decision = self.gemini_client.get_trade_decision({
+                        'current_price': signal.get('analysis', {}).get('current_price', 0),
+                        'technical_signal': signal['signal'],
+                        'confidence': signal['confidence'],
+                        'setup_quality': signal['setup_quality'],
+                        'entry_price': signal['entry_price'],
+                        'stop_loss': signal['stop_loss'],
+                        'take_profit': signal['take_profit'],
+                        'risk_reward_ratio': signal['risk_reward_ratio'],
+                        'market_data': market_data
+                    })
+
+                    # AI can override or enhance the signal
+                    if ai_decision and ai_decision.get('trade_decision') != 'HOLD':
+                        # AI confirms the trade - enhance confidence
+                        signal['ai_validated'] = True
+                        signal['ai_confidence'] = ai_decision.get('confidence_score', 0.5)
+                        signal['ai_reasoning'] = ai_decision.get('reasoning', 'AI validation')
+                        signal['confidence'] = min(1.0, signal['confidence'] + 0.2)  # Boost confidence
+                        logger.info(f"✅ AI validated {signal['signal']} signal (AI confidence: {signal['ai_confidence']:.2f})")
+                    else:
+                        # AI suggests HOLD - reduce confidence or override
+                        signal['ai_validated'] = False
+                        signal['ai_confidence'] = ai_decision.get('confidence_score', 0.0)
+                        signal['ai_reasoning'] = ai_decision.get('reasoning', 'AI suggests caution')
+                        signal['confidence'] = max(0.0, signal['confidence'] - 0.3)  # Reduce confidence
+
+                        # If AI strongly disagrees, override to HOLD
+                        if signal['confidence'] < 0.3:
+                            signal['signal'] = 'HOLD'
+                            signal['reasons'].append('AI validation failed')
+
+                        logger.info(f"⚠️ AI suggests caution for {signal['signal']} signal")
+
+                except Exception as e:
+                    logger.warning(f"AI validation failed: {e}")
+                    signal['ai_validated'] = False
+                    signal['ai_reasoning'] = f"AI validation error: {str(e)}"
             else:
-                # Fallback to technical analysis only
-                logger.info("Using technical analysis only (Gemini AI unavailable)")
-                signal = self.trading_engine.generate_technical_signal(market_data, account_info)
+                # Technical analysis only
+                if not self.gemini_available:
+                    logger.info("Using technical analysis only (Gemini AI unavailable)")
+                signal['ai_validated'] = False
+                signal['ai_reasoning'] = 'AI not available' if not self.gemini_available else 'Technical signal only'
             
             # Log analysis
             self.data_manager.save_market_analysis({
