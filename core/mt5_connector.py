@@ -252,8 +252,10 @@ class MT5Connector:
                 else:
                     logger.warning("macOS bridge failed, falling back to Yahoo Finance")
 
-            # Original MT5 connection for Windows
+            # Native MT5 connection for Windows
             if MT5_AVAILABLE:
+                logger.info(f"🪟 Using native Windows MT5 connection (Login: {self.login})")
+
                 # Initialize MT5
                 if not mt5.initialize():
                     error = mt5.last_error()
@@ -277,33 +279,35 @@ class MT5Connector:
                         logger.error(f"MT5 login failed: {error}")
                         return {
                             'success': False,
-                        'error': f"Login failed: {error}",
-                        'account_info': None
-                    }
-            
-            # Get account information
-            account_info = mt5.account_info()
-            if account_info is None:
-                logger.warning("Could not retrieve account info")
-                self.account_info = {}
-            else:
-                self.account_info = account_info._asdict()
-                logger.info(f"Connected to account: {self.account_info.get('login', 'Unknown')}")
-            
-            self.connected = True
-            
-            # Test symbol availability
-            symbol_info = mt5.symbol_info(self.symbol)
-            if symbol_info is None:
-                logger.warning(f"Symbol {self.symbol} not found")
-            else:
-                logger.info(f"Symbol {self.symbol} available")
-            
-            return {
-                'success': True,
-                'error': None,
-                'account_info': self.account_info
-            }
+                            'error': f"Login failed: {error}",
+                            'account_info': None
+                        }
+
+                # Get account information
+                account_info = mt5.account_info()
+                if account_info is None:
+                    logger.warning("Could not retrieve account info")
+                    self.account_info = {}
+                else:
+                    self.account_info = account_info._asdict()
+                    logger.info(f"Connected to account: {self.account_info.get('login', 'Unknown')}")
+
+                self.connected = True
+
+                # Test symbol availability
+                symbol_info = mt5.symbol_info(self.symbol)
+                if symbol_info is None:
+                    logger.warning(f"Symbol {self.symbol} not found")
+                else:
+                    logger.info(f"Symbol {self.symbol} available")
+
+                return {
+                    'success': True,
+                    'error': None,
+                    'account_info': self.account_info,
+                    'server': self.server,
+                    'method': 'Native Windows MT5'
+                }
             
         except Exception as e:
             logger.error(f"MT5 connection error: {str(e)}")
@@ -380,13 +384,15 @@ class MT5Connector:
                 else:
                     logger.warning("No data from macOS bridge, falling back to Yahoo Finance")
 
-            # Original MT5 connection for Windows
+            # Native Windows MT5 connection
             if MT5_AVAILABLE:
-                # Get rates
+                logger.info(f"📊 Getting {symbol} data via native Windows MT5")
+
+                # Get rates from MT5
                 rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, count)
 
                 if rates is None or len(rates) == 0:
-                    logger.error(f"No data received for {symbol} {timeframe}")
+                    logger.error(f"No data received for {symbol} {timeframe} from native MT5")
                     return None
 
                 # Convert to DataFrame
@@ -409,7 +415,7 @@ class MT5Connector:
                 df['Symbol'] = symbol
                 df['Timeframe'] = timeframe
 
-                logger.info(f"Retrieved {len(df)} candles for {symbol} {timeframe} from Yahoo Finance (MT5 fallback)")
+                logger.info(f"✅ Retrieved {len(df)} candles for {symbol} {timeframe} from native Windows MT5")
                 return df
 
             # Fallback to Yahoo Finance with MT5 credentials shown
