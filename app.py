@@ -1535,15 +1535,24 @@ def display_backtesting_section():
                 if results.get('equity_curve') and len(results['equity_curve']) > 1:
                     st.write("#### 📈 Portfolio Performance")
 
-                    fig = px.line(
-                        x=results['equity_curve'].index,
-                        y=results['equity_curve'].values,
-                        title='Portfolio Value Over Time (Real Market Data)',
-                        labels={'x': 'Date', 'y': 'Portfolio Value ($)'}
-                    )
-                    fig.update_layout(height=250, showlegend=False)
-                    fig.update_traces(line_color='#1f77b4', line_width=2)
-                    st.plotly_chart(fig, use_container_width=True)
+                    # Convert equity_curve list to DataFrame for plotting
+                    equity_data = results['equity_curve']
+                    if isinstance(equity_data, list) and len(equity_data) > 0:
+                        # Extract time and equity values from list of dictionaries
+                        times = [point['time'] for point in equity_data]
+                        equity_values = [point['equity'] for point in equity_data]
+
+                        fig = px.line(
+                            x=times,
+                            y=equity_values,
+                            title='Portfolio Value Over Time (Real Market Data)',
+                            labels={'x': 'Date', 'y': 'Portfolio Value ($)'}
+                        )
+                        fig.update_layout(height=250, showlegend=False)
+                        fig.update_traces(line_color='#1f77b4', line_width=2)
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.info("📊 Equity curve data not available for plotting")
 
                 # Show trade details if available
                 if not results['trades'].empty:
