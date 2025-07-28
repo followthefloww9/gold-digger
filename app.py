@@ -1406,88 +1406,68 @@ def display_backtesting_section():
         end_date = st.date_input("End Date", value=pd.to_datetime("2024-01-31"))
 
     if st.button("🚀 Run Backtest", type="primary"):
-        with st.spinner("Running professional backtest with Gold Digger AI..."):
+        with st.spinner("Running professional backtest with historical gold data..."):
             try:
-                # Use our new professional backtesting engine
+                # Use our new historical data fetcher and professional backtesting engine
                 from core.backtesting_engine import BacktestingEngine
-                from core.mt5_connector import MT5Connector
+                from core.historical_data import HistoricalDataFetcher
 
-                st.info("📊 Fetching real gold market data and running AI backtest...")
+                st.info("📊 Fetching comprehensive historical gold data for backtesting...")
 
-                # Get real market data
-                connector = MT5Connector()
-                init_result = connector.initialize_mt5()
+                # Initialize historical data fetcher
+                data_fetcher = HistoricalDataFetcher()
 
-                if init_result['success']:
-                    # Calculate data range
-                    days_diff = (pd.to_datetime(end_date) - pd.to_datetime(start_date)).days
-                    candles_needed = min(days_diff * 288, 2000)  # 288 5-min candles per day
+                # Get historical data for the selected period
+                start_dt = pd.to_datetime(start_date)
+                end_dt = pd.to_datetime(end_date)
 
-                    # Get market data
-                    data = connector.get_market_data('XAUUSD', 'M5', candles_needed)
-
-                    if data is not None and not data.empty:
-                        # Ensure data has proper datetime index
-                        if 'Time' in data.columns and data.index.name != 'Time':
-                            data = data.set_index('Time')
-
-                        # Convert index to datetime if needed
-                        if not pd.api.types.is_datetime64_any_dtype(data.index):
-                            data.index = pd.to_datetime(data.index)
-
-                        # Handle timezone issues for date filtering
-                        start_ts = pd.to_datetime(start_date)
-                        end_ts = pd.to_datetime(end_date)
-
-                        # If data index has timezone, make comparison timestamps timezone-aware
-                        if data.index.tz is not None:
-                            # Convert to same timezone as data
-                            start_ts = start_ts.tz_localize(data.index.tz)
-                            end_ts = end_ts.tz_localize(data.index.tz)
-                        elif hasattr(start_ts, 'tz') and start_ts.tz is not None:
-                            # If timestamps have timezone but data doesn't, remove timezone
-                            start_ts = start_ts.tz_localize(None)
-                            end_ts = end_ts.tz_localize(None)
-
-                        # Filter data safely
-                        try:
-                            mask = (data.index >= start_ts) & (data.index <= end_ts)
-                            data = data.loc[mask]
-                        except Exception as e:
-                            # Fallback: convert everything to timezone-naive
-                            if data.index.tz is not None:
-                                data.index = data.index.tz_convert('UTC').tz_localize(None)
-                            start_ts = pd.to_datetime(start_date).tz_localize(None)
-                            end_ts = pd.to_datetime(end_date).tz_localize(None)
-                            mask = (data.index >= start_ts) & (data.index <= end_ts)
-                            data = data.loc[mask]
-
-                        if len(data) >= 50:
-                            # Run professional backtest
-                            engine = BacktestingEngine()
-                            results = engine.run_backtest(
-                                data=data,
-                                initial_balance=100000,
-                                start_date=pd.to_datetime(start_date),
-                                end_date=pd.to_datetime(end_date),
-                                lot_size=0.01
-                            )
-
-                            # Convert to expected format
-                            if 'error' not in results:
-                                results['success'] = True
-                            else:
-                                results = {'success': False, 'error': results['error']}
-                        else:
-                            results = {'success': False, 'error': 'Insufficient data for selected period'}
-                    else:
-                        results = {'success': False, 'error': 'No market data available'}
+                # Determine appropriate interval based on date range
+                days_diff = (end_dt - start_dt).days
+                if days_diff <= 2:
+                    interval = '5m'  # 5-minute data for short periods
+                elif days_diff <= 7:
+                    interval = '15m'  # 15-minute data for week
+                elif days_diff <= 30:
+                    interval = '1h'   # 1-hour data for month
                 else:
-                    # Fallback to simple backtester
+                    interval = '1d'   # Daily data for longer periods
+
+                st.info(f"📊 Fetching {interval} data for {days_diff} days...")
+
+                # Get historical data
+                data = data_fetcher.get_gold_historical_data(
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    interval=interval
+                )
+
+                if data is not None and len(data) >= 10:
+                    st.info(f"✅ Retrieved {len(data)} candles from {data.iloc[0].get('Source', 'Historical Data')}")
+
+                    # Run professional backtest
+                    engine = BacktestingEngine()
+                    results = engine.run_backtest(
+                        data=data,
+                        initial_balance=100000,
+                        start_date=start_dt,
+                        end_date=end_dt,
+                        lot_size=0.01
+                    )
+
+                    # Convert to expected format
+                    if 'error' not in results:
+                        results['success'] = True
+                        results['data_source'] = data.iloc[0].get('Source', 'Historical Data')
+                        results['interval'] = interval
+                    else:
+                        results = {'success': False, 'error': results['error']}
+                else:
+                    # Fallback to simple backtester if historical data fails
+                    st.warning("⚠️ Historical data unavailable, using fallback method...")
                     from backtest.simple_backtester import run_simple_backtest
                     results = run_simple_backtest(
-                        start_date=pd.to_datetime(start_date),
-                        end_date=pd.to_datetime(end_date),
+                        start_date=start_dt,
+                        end_date=end_dt,
                         initial_capital=100000
                     )
 
