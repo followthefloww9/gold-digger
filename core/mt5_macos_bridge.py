@@ -231,20 +231,9 @@ class MT5MacOSBridge:
                         elif weekday == 5:  # Friday
                             is_market_open = hour < 22
 
-                        if is_market_open and time_diff_hours > 0.5:  # More aggressive: 30 minutes
+                        if is_market_open and time_diff_hours > 0.5:  # Detect stale data
                             logger.warning(f"⚠️ Yahoo Finance data is stale ({time_diff_hours:.1f} hours old, >30min threshold)")
-                            # Add some realistic variation to the stale price
-                            import random
-                            variation = random.uniform(-2, 2)  # ±$2 variation
-                            adjusted_price = round(latest_price + variation, 2)
-
-                            # Update the last candle with adjusted price
-                            df.iloc[-1, df.columns.get_loc('Close')] = adjusted_price
-                            df.iloc[-1, df.columns.get_loc('Open')] = round(adjusted_price - random.uniform(-1, 1), 2)
-                            df.iloc[-1, df.columns.get_loc('High')] = round(max(df.iloc[-1]['Open'], adjusted_price) + random.uniform(0, 1), 2)
-                            df.iloc[-1, df.columns.get_loc('Low')] = round(min(df.iloc[-1]['Open'], adjusted_price) - random.uniform(0, 1), 2)
-
-                            logger.info(f"✅ Yahoo Finance (adjusted for staleness): {len(df)} candles, latest: ${adjusted_price:.2f}")
+                            logger.info(f"📊 Using real Yahoo Finance data as-is: {len(df)} candles, latest: ${latest_price:.2f}")
                         else:
                             logger.info(f"✅ Yahoo Finance SUCCESS: {len(df)} candles, latest: ${latest_price:.2f}")
 

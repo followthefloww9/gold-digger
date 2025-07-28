@@ -706,20 +706,10 @@ def main():
             st.error(f"❌ Chart Error: {str(e)}")
             st.info("💡 Try refreshing the page or check data sources")
 
-            # Fallback chart
-            import numpy as np
-            dates = pd.date_range(start='2025-01-26', periods=50, freq='1min')
-            fallback_data = pd.DataFrame({
-                'datetime': dates,
-                'open': 2675 + np.random.randn(50) * 2,
-                'high': 2675 + np.random.randn(50) * 2 + 1,
-                'low': 2675 + np.random.randn(50) * 2 - 1,
-                'close': 2675 + np.random.randn(50) * 2,
-                'volume': np.random.randint(100, 1000, 50)
-            })
-
-            fig = create_candlestick_chart(fallback_data, timeframe)
-            st.plotly_chart(fig, use_container_width=True)
+            # No synthetic data - show error message
+            st.error("❌ No real market data available")
+            st.info("📊 Real data only policy - no synthetic fallback")
+            st.info("💡 Please check your internet connection or try again later")
 
         # Live price ticker
         try:
@@ -874,27 +864,27 @@ def get_real_market_data(timeframe='M1', count=200):
                 print(f"🔍 DEBUG: Returning MT5 data with {len(df_chart)} candles")  # Debug log
                 return df_chart
 
-        # Fallback to demo data but still try to get MT5 info
-        print("🔍 DEBUG: Falling back to Yahoo Finance")  # Debug log
+        # No synthetic data - return None if real data unavailable
+        print("🔍 DEBUG: No real market data available")  # Debug log
         st.session_state.data_source_info = {
-            'source': 'Yahoo Finance (MT5 Fallback)',
+            'source': 'No Real Data Available',
             'login': getattr(connector, 'login', 52445993),
             'server': getattr(connector, 'server', 'ICMarkets-Demo'),
-            'method': 'Fallback'
+            'method': 'Real Data Only Policy'
         }
-        return generate_sample_chart_data()
+        return None
 
     except Exception as e:
         print(f"🔍 DEBUG: Error in get_real_market_data: {str(e)}")  # Debug log
         st.error(f"Error getting market data: {str(e)}")
-        # Set fallback info
+        # Set error info - no synthetic data
         st.session_state.data_source_info = {
-            'source': 'Yahoo Finance (Error Fallback)',
+            'source': 'Error - No Real Data Available',
             'login': 52445993,
             'server': 'ICMarkets-Demo',
-            'method': 'Error Fallback'
+            'method': 'Real Data Only Policy'
         }
-        return generate_sample_chart_data()
+        return None
 
 def generate_sample_chart_data():
     """Generate sample OHLCV data for demonstration"""
