@@ -10,6 +10,13 @@ from typing import Dict, Optional, List
 import logging
 from dotenv import load_dotenv
 
+# Import MQL5 bridge for cross-platform trading
+try:
+    from .mql5_bridge import MQL5Bridge
+    MQL5_AVAILABLE = True
+except ImportError:
+    MQL5_AVAILABLE = False
+
 # Load environment variables
 load_dotenv()
 
@@ -23,11 +30,23 @@ class TradingEngine:
     Handles trade setup analysis, validation, and execution decisions
     """
     
-    def __init__(self):
+    def __init__(self, use_mql5_bridge: bool = True):
         """Initialize trading engine"""
         self.min_risk_reward = 1.5  # Minimum risk-reward ratio
         self.max_risk_per_trade = 0.02  # Maximum 2% risk per trade
         self.max_daily_trades = 5  # Maximum trades per day
+
+        # Initialize MQL5 bridge for cross-platform trading
+        self.mql5_bridge = None
+        self.use_mql5_bridge = use_mql5_bridge and MQL5_AVAILABLE
+
+        if self.use_mql5_bridge:
+            try:
+                self.mql5_bridge = MQL5Bridge()
+                logger.info("✅ MQL5 Bridge initialized for cross-platform trading")
+            except Exception as e:
+                logger.warning(f"⚠️ MQL5 Bridge initialization failed: {e}")
+                self.use_mql5_bridge = False
         
         logger.info("TradingEngine initialized")
     
@@ -380,6 +399,115 @@ class TradingEngine:
                 'confidence': 0.0,
                 'reasons': [f"Signal generation error: {str(e)}"],
                 'timestamp': datetime.now()
+            }
+
+    def execute_trade_via_mql5(self, signal: Dict) -> Dict:
+        """
+        Execute trade via MQL5 Expert Advisor
+
+        Args:
+            signal: Trading signal from generate_trade_signal()
+
+        Returns:
+            dict: Execution results
+        """
+        if not self.use_mql5_bridge or not self.mql5_bridge:
+            return {
+                'success': False,
+                'message': 'MQL5 Bridge not available',
+                'method': 'direct_mt5_required'
+            }
+
+        try:
+            # Extract signal data
+            action = signal.get('signal', 'HOLD').upper()
+            confidence = signal.get('confidence', 0.5)
+            entry_price = signal.get('entry_price', 0)
+            stop_loss = signal.get('stop_loss', 0)
+            take_profit = signal.get('take_profit', 0)
+            analysis = signal.get('analysis', 'AI Trading Signal')
+
+            # Send signal to MQL5 EA
+            if action == 'BUY':
+                success = self.mql5_bridge.send_buy_signal(
+                    price=entry_price,
+                    stop_loss=stop_loss,
+                    take_profit=take_profit,
+                    confidence=confidence,
+                    analysis=analysis
+                )
+            elif action == 'SELL':
+                success = self.mql5_bridge.send_sell_signal(
+                    price=entry_price,
+                    stop_loss=stop_loss,
+                    take_profit=take_profit,
+                    confidence=confidence,
+                    analysis=analysis
+                )
+            elif action == 'CLOSE':
+                success = self.mql5_bridge.send_close_signal(analysis=analysis)
+            else:  # HOLD
+                success = self.mql5_bridge.send_hold_signal(analysis=analysis)
+
+            if not success:
+                return {
+                    'success': False,
+                    'message': 'Failed to send signal to MQL5 EA',
+                    'method': 'mql5_bridge'
+                }
+
+            # Wait for execution results
+            logger.info(f"📤 Signal sent to MQL5 EA: {action}")
+            results = self.mql5_bridge.wait_for_execution(timeout=30)
+
+            if results:
+                return {
+                    'success': True,
+                    'message': f'Trade executed via MQL5: {action}',
+                    'method': 'mql5_bridge',
+                    'execution_results': results,
+                    'account_status': self.mql5_bridge.get_account_status()
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': 'MQL5 EA execution timeout',
+                    'method': 'mql5_bridge'
+                }
+
+        except Exception as e:
+            logger.error(f"❌ MQL5 execution error: {e}")
+            return {
+                'success': False,
+                'message': f'MQL5 execution error: {str(e)}',
+                'method': 'mql5_bridge'
+            }
+
+    def get_mql5_status(self) -> Dict:
+        """Get MQL5 EA status and account information"""
+        if not self.use_mql5_bridge or not self.mql5_bridge:
+            return {
+                'available': False,
+                'message': 'MQL5 Bridge not initialized'
+            }
+
+        try:
+            # Test connection
+            connection_test = self.mql5_bridge.test_connection()
+            account_status = self.mql5_bridge.get_account_status()
+
+            return {
+                'available': True,
+                'ea_running': self.mql5_bridge.is_ea_running(),
+                'connection_test': connection_test,
+                'account_status': account_status,
+                'data_path': str(self.mql5_bridge.data_path)
+            }
+
+        except Exception as e:
+            return {
+                'available': False,
+                'error': str(e)
             }
 
 # Test function
