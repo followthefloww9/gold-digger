@@ -231,8 +231,8 @@ class MT5MacOSBridge:
                         elif weekday == 5:  # Friday
                             is_market_open = hour < 22
 
-                        if is_market_open and time_diff_hours > 2:
-                            logger.warning(f"⚠️ Yahoo Finance data is stale ({time_diff_hours:.1f} hours old)")
+                        if is_market_open and time_diff_hours > 0.5:  # More aggressive: 30 minutes
+                            logger.warning(f"⚠️ Yahoo Finance data is stale ({time_diff_hours:.1f} hours old, >30min threshold)")
                             # Add some realistic variation to the stale price
                             import random
                             variation = random.uniform(-2, 2)  # ±$2 variation
