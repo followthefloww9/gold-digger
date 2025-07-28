@@ -1555,30 +1555,56 @@ def display_backtesting_section():
                         st.info("📊 Equity curve data not available for plotting")
 
                 # Show trade details if available
-                if not results['trades'].empty:
+                if results.get('trades') and len(results['trades']) > 0:
                     st.write("#### 📋 Trade Summary")
 
-                    # Format trades for better display
-                    trades_display = results['trades'].copy()
-                    if 'entry_time' in trades_display.columns:
-                        trades_display['Entry'] = trades_display['entry_time'].dt.strftime('%m/%d %H:%M')
-                        trades_display['Exit'] = trades_display['exit_time'].dt.strftime('%m/%d %H:%M')
-                        trades_display['Entry Price'] = trades_display['entry_price'].round(2)
-                        trades_display['Exit Price'] = trades_display['exit_price'].round(2)
-                        trades_display['P&L %'] = trades_display['pnl_pct'].round(2)
+                    # Convert trades list to DataFrame for display
+                    trades_list = results['trades']
+                    if isinstance(trades_list, list) and len(trades_list) > 0:
+                        # Convert list of trade dictionaries to display format
+                        trades_display = []
+                        for trade in trades_list[:10]:  # Show last 10 trades
+                            try:
+                                entry_time = trade.get('entry_time', 'N/A')
+                                exit_time = trade.get('exit_time', 'N/A')
 
-                        # Select compact columns
-                        display_cols = ['Entry', 'Exit', 'Entry Price', 'Exit Price', 'P&L %']
-                        trades_compact = trades_display[display_cols].head(10)
+                                # Format times if they're datetime objects
+                                if hasattr(entry_time, 'strftime'):
+                                    entry_str = entry_time.strftime('%m/%d %H:%M')
+                                else:
+                                    entry_str = str(entry_time)
+
+                                if hasattr(exit_time, 'strftime'):
+                                    exit_str = exit_time.strftime('%m/%d %H:%M')
+                                else:
+                                    exit_str = str(exit_time)
+
+                                trades_display.append({
+                                    'Entry': entry_str,
+                                    'Exit': exit_str,
+                                    'Type': trade.get('type', 'N/A'),
+                                    'Entry Price': f"${trade.get('entry_price', 0):.2f}",
+                                    'Exit Price': f"${trade.get('exit_price', 0):.2f}",
+                                    'P&L': f"${trade.get('profit', 0):.2f}",
+                                    'Reason': trade.get('exit_reason', 'N/A')
+                                })
+                            except Exception as e:
+                                # Skip problematic trades
+                                continue
+
+                        trades_compact = trades_display
                     else:
-                        trades_compact = results['trades'].head(10)
+                        trades_compact = []
 
-                    st.dataframe(
-                        trades_compact,
-                        use_container_width=True,
-                        height=300,
-                        hide_index=True
-                    )
+                    if trades_compact:
+                        st.dataframe(
+                            trades_compact,
+                            use_container_width=True,
+                            height=300,
+                            hide_index=True
+                        )
+                    else:
+                        st.info("📊 No trade details available")
 
                     if len(results['trades']) > 10:
                         st.caption(f"Showing first 10 of {len(results['trades'])} trades")
